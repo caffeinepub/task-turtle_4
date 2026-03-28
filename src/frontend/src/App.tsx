@@ -12,10 +12,14 @@ import { OTPVerification } from "./components/OTPVerification";
 import { PaymentDemo } from "./components/PaymentDemo";
 import { TaskTimeline } from "./components/TaskTimeline";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { BlogPage } from "./pages/BlogPage";
 import { Dashboard } from "./pages/Dashboard";
+import { FeaturesPage } from "./pages/FeaturesPage";
+import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { LoginPage } from "./pages/LoginPage";
 import MyProfile from "./pages/MyProfile";
 import { TaskerPage } from "./pages/TaskerPage";
+import { TasksPage } from "./pages/TasksPage";
 import { WalletPage } from "./pages/WalletPage";
 
 const GREEN = "#00E676";
@@ -44,7 +48,6 @@ export default function App() {
     setTimeout(() => setVerified(false), 3500);
   }
 
-  // While loading saved identity, show a minimal spinner
   if (isInitializing) {
     return (
       <div
@@ -62,35 +65,26 @@ export default function App() {
     );
   }
 
-  // Not authenticated → show login
   if (!isAuthenticated) {
     return <LoginPage />;
   }
 
-  // Authenticated + #dashboard → show dashboard
-  if (hash === "#dashboard") {
-    return <Dashboard />;
-  }
+  // Separate pages via hash routing
+  if (hash === "#dashboard") return <Dashboard />;
+  if (hash === "#profile") return <MyProfile />;
+  if (hash === "#tasker") return <TaskerPage />;
+  if (hash === "#wallet") return <WalletPage />;
+  if (hash === "#features") return <FeaturesPage />;
+  if (hash === "#how-it-works") return <HowItWorksPage />;
+  if (hash === "#tasks") return <TasksPage />;
+  if (hash === "#blog") return <BlogPage />;
 
-  if (hash === "#profile") {
-    return <MyProfile />;
-  }
-
-  if (hash === "#tasker") {
-    return <TaskerPage />;
-  }
-
-  if (hash === "#wallet") {
-    return <WalletPage />;
-  }
-
-  // Authenticated → landing page with nav showing "Go to Dashboard"
+  // Default: Landing page (Home)
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"
       style={{ backgroundColor: "#050505" }}
     >
-      {/* Ambient background glows */}
       <div
         className="fixed top-0 left-0 w-[600px] h-[600px] pointer-events-none"
         style={{
@@ -108,7 +102,6 @@ export default function App() {
         }}
       />
 
-      {/* OTP overlay */}
       <AnimatePresence>
         {showOTP && (
           <motion.div
@@ -132,7 +125,7 @@ export default function App() {
             >
               <OTPVerification
                 taskId="demo-task-001"
-                taskTitle="Grocery Pickup \u2013 Bandra"
+                taskTitle="Grocery Pickup – Bandra"
                 onVerified={handleVerified}
                 onCancel={() => setShowOTP(false)}
               />
@@ -141,7 +134,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Content */}
       <div className="relative" style={{ zIndex: 1 }}>
         <Navbar />
         <main>
@@ -150,7 +142,7 @@ export default function App() {
           <LiveMap />
           <FeaturedTasks />
 
-          {/* Task Timeline Demo Section */}
+          {/* Task Timeline Demo */}
           <section className="py-20 px-4">
             <div className="max-w-6xl mx-auto">
               <div className="text-center mb-12">
@@ -168,7 +160,6 @@ export default function App() {
                   final verification.
                 </p>
               </div>
-
               <div className="flex flex-col md:flex-row gap-6 justify-center items-start">
                 <div className="w-full max-w-sm mx-auto">
                   <p className="text-white/30 text-xs text-center mb-3 uppercase tracking-widest">
@@ -195,7 +186,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* OTP Verification Demo Section */}
+          {/* OTP Demo */}
           <section className="py-20 px-4">
             <div className="max-w-6xl mx-auto">
               <div className="text-center mb-12">
@@ -209,11 +200,10 @@ export default function App() {
                   OTP-verified task completion
                 </h2>
                 <p className="text-white/50 text-base max-w-md mx-auto">
-                  Every delivery is confirmed with a one-time code \u2014 so
-                  only you can mark a task as done.
+                  Every delivery is confirmed with a one-time code — so only you
+                  can mark a task as done.
                 </p>
               </div>
-
               <div className="flex justify-center">
                 <div
                   className="relative w-full max-w-sm rounded-2xl p-8 text-center"
@@ -235,9 +225,8 @@ export default function App() {
                   >
                     <ShieldCheck size={28} style={{ color: GREEN }} />
                   </div>
-
                   <h3 className="text-white font-bold text-xl mb-2">
-                    Grocery Pickup \u2013 Bandra
+                    Grocery Pickup – Bandra
                   </h3>
                   <p className="text-white/40 text-sm mb-1">
                     Task ID: demo-task-001
@@ -245,7 +234,6 @@ export default function App() {
                   <p className="text-white/30 text-xs mb-8">
                     Tap below to simulate the delivery verification flow
                   </p>
-
                   <AnimatePresence>
                     {verified && (
                       <motion.div
@@ -260,12 +248,10 @@ export default function App() {
                         }}
                         data-ocid="otp.success_state"
                       >
-                        <ShieldCheck size={16} />
-                        Task verified successfully!
+                        <ShieldCheck size={16} /> Task verified successfully!
                       </motion.div>
                     )}
                   </AnimatePresence>
-
                   <button
                     type="button"
                     className="w-full h-12 rounded-xl font-semibold text-sm transition-all duration-200"
@@ -282,7 +268,6 @@ export default function App() {
                   >
                     Verify Task
                   </button>
-
                   <p className="text-white/20 text-xs mt-4">
                     A 6-digit OTP will be generated for this task
                   </p>
@@ -291,10 +276,8 @@ export default function App() {
             </div>
           </section>
 
-          {/* Payment & Escrow Demo Section */}
           <PaymentDemo />
 
-          {/* Admin Dashboard Section */}
           <section className="py-20 px-4" data-ocid="admin.section">
             <div className="max-w-6xl mx-auto">
               <div className="text-center mb-12">

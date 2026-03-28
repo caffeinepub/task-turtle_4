@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 const NAV_LINKS = [
-  { label: "Home", href: "/" },
+  { label: "Home", href: "#home" },
   { label: "Features", href: "#features" },
   { label: "How it Works", href: "#how-it-works" },
   { label: "Tasks", href: "#tasks" },
@@ -16,6 +16,9 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { identity, clear } = useInternetIdentity();
   const isAuthenticated = !!identity;
+  const [currentHash, setCurrentHash] = useState(
+    () => window.location.hash || "#home",
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -23,9 +26,21 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    const handler = () => setCurrentHash(window.location.hash || "#home");
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+
   function handleLogout() {
     clear();
     window.location.hash = "";
+  }
+
+  function isActive(href: string) {
+    if (href === "#home")
+      return !currentHash || currentHash === "#home" || currentHash === "";
+    return currentHash === href;
   }
 
   return (
@@ -39,7 +54,7 @@ export function Navbar() {
       <div className="max-w-[1200px] mx-auto px-6">
         <div className="flex items-center justify-between h-[68px]">
           <a
-            href="/"
+            href="#home"
             className="flex items-center gap-2 group"
             data-ocid="navbar.link"
           >
@@ -54,7 +69,15 @@ export function Navbar() {
               <a
                 key={link.label}
                 href={link.href}
-                className="px-4 py-2 text-sm font-medium text-[#A7ADB3] hover:text-white transition-colors duration-200 rounded-full hover:bg-white/5"
+                className="px-4 py-2 text-sm font-medium transition-colors duration-200 rounded-full"
+                style={
+                  isActive(link.href)
+                    ? {
+                        color: "#00E676",
+                        backgroundColor: "rgba(0,230,118,0.1)",
+                      }
+                    : { color: "#A7ADB3" }
+                }
                 data-ocid="navbar.link"
               >
                 {link.label}
@@ -134,7 +157,15 @@ export function Navbar() {
                 <a
                   key={link.label}
                   href={link.href}
-                  className="px-4 py-3 text-sm font-medium text-[#A7ADB3] hover:text-white transition-colors rounded-xl hover:bg-white/5"
+                  className="px-4 py-3 text-sm font-medium transition-colors rounded-xl"
+                  style={
+                    isActive(link.href)
+                      ? {
+                          color: "#00E676",
+                          backgroundColor: "rgba(0,230,118,0.08)",
+                        }
+                      : { color: "#A7ADB3" }
+                  }
                   onClick={() => setMobileOpen(false)}
                   data-ocid="navbar.link"
                 >

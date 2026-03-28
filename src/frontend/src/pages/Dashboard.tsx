@@ -11,12 +11,17 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { type PublicTask, TaskStatus } from "../backend";
+import { type PublicTask, type Task, TaskStatus } from "../backend";
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { getTaskerEarning } from "../utils/platformFee";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const window: Window & {
+  Razorpay: new (opts: object) => { open(): void };
+} & any;
 
 const GREEN = "#00E676";
 const AMBER = "#F59E0B";
@@ -31,6 +36,19 @@ function formatTime(nanoseconds: bigint): string {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve();
+    document.body.appendChild(script);
   });
 }
 
@@ -80,7 +98,8 @@ function StatusBadge({ status }: { status: TaskStatus }) {
 function TaskCard({
   task,
   action,
-}: { task: PublicTask; action?: React.ReactNode }) {
+  footer,
+}: { task: PublicTask; action?: React.ReactNode; footer?: React.ReactNode }) {
   return (
     <div
       className="rounded-xl p-5 flex flex-col gap-3"
@@ -137,8 +156,8 @@ function TaskCard({
         )}
       </div>
 
-      {/* Static progress timeline for "My Tasks" */}
-      {!action && task.status !== TaskStatus.completed && (
+      {/* Static progress timeline */}
+      {task.status !== TaskStatus.completed && (
         <div
           className="flex flex-col gap-1.5 pt-2 border-t"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -200,6 +219,8 @@ function TaskCard({
         </span>
         {action}
       </div>
+
+      {footer}
     </div>
   );
 }
@@ -209,17 +230,49 @@ function MyTasksTab() {
   const { actor, isFetching } = useActor();
   const [tasks, setTasks] = useState<PublicTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [otpMap, setOtpMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!actor || isFetching) return;
     actor
       .getMyPostedTasks()
-      .then((t) => {
+      .then(async (t) => {
         setTasks(t);
         setLoading(false);
+        // fetch OTPs for accepted tasks
+        const accepted = t.filter(
+          (task) => task.status === TaskStatus.accepted,
+        );
+        const results = await Promise.all(
+          accepted.map((task) =>
+            actor.getTaskWithOtp(task.id).catch(() => null as Task | null),
+          ),
+        );
+        const map: Record<string, string> = {};
+        for (const full of results) {
+          if (full?.otp) map[full.id] = full.otp;
+        }
+
+        setOtpMap(map);
       })
       .catch(() => setLoading(false));
   }, [actor, isFetching]);
+
+  async function handleCancel(taskId: string) {
+    if (!actor) return;
+    setCancelling(taskId);
+    try {
+      const result = await (actor as any).cancelTask(taskId);
+      if (result.__kind__ === "ok") {
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      }
+    } catch (_) {
+      // silently handle
+    } finally {
+      setCancelling(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -251,17 +304,105 @@ function MyTasksTab() {
 
   return (
     <div className="flex flex-col gap-4" data-ocid="mytasks.list">
-      {tasks.map((task, i) => (
-        <motion.div
-          key={task.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05 }}
-          data-ocid={`mytasks.item.${i + 1}`}
-        >
-          <TaskCard task={task} />
-        </motion.div>
-      ))}
+      {tasks.map((task, i) => {
+        const otp = otpMap[task.id];
+        const isOpen = task.status === TaskStatus.open;
+        const isAccepted = task.status === TaskStatus.accepted;
+        const isCompleted = task.status === TaskStatus.completed;
+
+        return (
+          <motion.div
+            key={task.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            data-ocid={`mytasks.item.${i + 1}`}
+          >
+            <TaskCard
+              task={task}
+              action={
+                isCompleted ? (
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+                    style={{
+                      background: "rgba(0,230,118,0.15)",
+                      color: GREEN,
+                      border: `1px solid ${GREEN}40`,
+                    }}
+                  >
+                    <CheckCircle2 size={13} />
+                    Task Delivered
+                  </div>
+                ) : undefined
+              }
+              footer={
+                <div className="flex flex-col gap-2 mt-1">
+                  {/* OTP box for accepted tasks */}
+                  {isAccepted && (
+                    <div
+                      className="flex flex-col gap-1.5 px-4 py-3 rounded-xl"
+                      style={{
+                        background: "rgba(0,230,118,0.07)",
+                        border: `1px solid ${GREEN}30`,
+                      }}
+                    >
+                      <p
+                        className="text-xs"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
+                      >
+                        🔐 Your Delivery OTP — Share with the tasker when they
+                        arrive
+                      </p>
+                      {otp ? (
+                        <p
+                          className="text-2xl font-mono font-bold tracking-[0.35em] mt-0.5"
+                          style={{ color: GREEN }}
+                          data-ocid={`mytasks.otp.${i + 1}`}
+                        >
+                          {otp}
+                        </p>
+                      ) : (
+                        <Loader2
+                          size={14}
+                          className="animate-spin"
+                          style={{ color: GREEN }}
+                        />
+                      )}
+                      <p
+                        className="text-xs"
+                        style={{ color: "rgba(255,255,255,0.3)" }}
+                      >
+                        Task cannot be cancelled — tasker has been assigned
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Cancel button for open tasks only */}
+                  {isOpen && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancel(task.id)}
+                      disabled={cancelling === task.id}
+                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-60"
+                      style={{
+                        background: "rgba(239,68,68,0.1)",
+                        border: "1px solid rgba(239,68,68,0.3)",
+                        color: "#f87171",
+                      }}
+                      data-ocid={`mytasks.delete_button.${i + 1}`}
+                    >
+                      {cancelling === task.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : null}
+                      {cancelling === task.id ? "Cancelling…" : "Cancel Task"}
+                    </button>
+                  )}
+                </div>
+              }
+            />
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
@@ -317,8 +458,10 @@ function PostTaskTab() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const baseAmount = Number(fields.amount);
+  const tipAmount = fields.tip ?? 0;
   const surgePrice =
     surgeActive && baseAmount > 0 ? getSurgePrice(baseAmount) : null;
+  const finalAmount = (surgePrice ?? baseAmount) + tipAmount;
 
   function validate() {
     const e: Record<string, string> = {};
@@ -342,32 +485,86 @@ function PostTaskTab() {
     }
     setIsLoading(true);
     setSubmitError(null);
+
     try {
-      const finalAmount = surgePrice ?? baseAmount;
-      const location = fields.deliveryLocation
-        ? `${fields.pickupLocation} → ${fields.deliveryLocation}`
-        : fields.pickupLocation;
-      const description =
-        fields.description ||
-        (fields.contactNumber ? `Contact: ${fields.contactNumber}` : "");
-      const id = await actor.createTask(
-        fields.title,
-        description,
-        fields.category,
-        location,
-        BigInt(Math.round(finalAmount)),
-      );
-      if (id === null) {
-        setSubmitError("Failed to create task. Please try again.");
-      } else {
-        setTaskId(id);
-        setSubmitted(true);
-      }
+      await loadRazorpayScript();
+    } catch {
+      setSubmitError("Failed to load payment SDK. Check your connection.");
+      setIsLoading(false);
+      return;
+    }
+
+    const location = fields.deliveryLocation
+      ? `${fields.pickupLocation} → ${fields.deliveryLocation}`
+      : fields.pickupLocation;
+    const description =
+      fields.description ||
+      (fields.contactNumber ? `Contact: ${fields.contactNumber}` : "");
+
+    const options = {
+      key: "rzp_live_SRNbTwyEmzQSvO",
+      amount: finalAmount * 100,
+      currency: "INR",
+      name: "Task Turtle",
+      description: fields.title || "Task Payment",
+      theme: { color: "#00E676" },
+      handler: async (response: {
+        razorpay_payment_id: string;
+        razorpay_order_id?: string;
+        razorpay_signature?: string;
+      }) => {
+        setIsLoading(true);
+        setSubmitError(null);
+        try {
+          const pendingTaskId = `pending_${Date.now()}`;
+          await actor.verifyPayment(
+            response.razorpay_payment_id,
+            response.razorpay_order_id || "",
+            "",
+            pendingTaskId,
+            BigInt(Math.round(finalAmount)),
+            "",
+            "",
+          );
+          const id = await actor.createTask(
+            fields.title,
+            description,
+            fields.category,
+            location,
+            BigInt(Math.round(finalAmount)),
+          );
+          if (id === null) {
+            setSubmitError(
+              "Payment received but task creation failed. Please contact support.",
+            );
+          } else {
+            setTaskId(id);
+            setSubmitted(true);
+          }
+        } catch (err) {
+          setSubmitError(
+            err instanceof Error
+              ? err.message
+              : "Something went wrong after payment.",
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setIsLoading(false);
+        },
+      },
+    };
+
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "Something went wrong.",
+        err instanceof Error ? err.message : "Failed to open payment modal.",
       );
-    } finally {
       setIsLoading(false);
     }
   }
@@ -408,7 +605,7 @@ function PostTaskTab() {
         </div>
         <h3 className="text-xl font-bold text-white">Task Posted!</h3>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
-          A tasker will reach out to you shortly.
+          Payment received. A tasker will reach out to you shortly.
         </p>
         {taskId && (
           <div
@@ -779,7 +976,8 @@ function PostTaskTab() {
           style={{ color: `${GREEN}90`, flexShrink: 0, marginTop: 1 }}
         />
         <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-          Payment is held in escrow and released only after task completion.
+          Payment is collected via Razorpay and held in escrow. Released only
+          after task completion.
         </p>
       </div>
 
@@ -811,7 +1009,11 @@ function PostTaskTab() {
         }}
       >
         {isLoading && <Loader2 size={16} className="animate-spin" />}
-        {isLoading ? "Posting…" : "Pay & Post Task (Escrow)"}
+        {isLoading
+          ? "Processing…"
+          : finalAmount > 0
+            ? `Pay ₹${finalAmount} & Post Task`
+            : "Pay & Post Task"}
       </motion.button>
     </form>
   );

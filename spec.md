@@ -1,35 +1,34 @@
-# Task Turtle – My Profile Page
+# Task Turtle
 
 ## Current State
-- Backend has `UserProfile` type with only `name: Text`
-- `saveCallerUserProfile` and `getCallerUserProfile` functions exist
-- Dashboard navbar has a "Profile" tab pill (currently non-functional)
-- App uses hash-based routing (`#dashboard`)
+- Post Task form submits directly to `createTask` backend without any payment
+- My Tasks tab shows all tasks with no cancel functionality
+- Tasker OTP verify works and marks task as completed
+- `createTask`, `acceptTask`, `completeTask`, `verifyPayment` all exist in backend
+- No `cancelTask` function exists
 
 ## Requested Changes (Diff)
 
 ### Add
-- Extend `UserProfile` Motoko type with: `phone`, `location`, `upiId`, `aadharNumber` (optional), `studentId` (optional)
-- New `MyProfile.tsx` page component with form and validation
-- Route `#profile` in App.tsx to render `<MyProfile />`
-- Wire "Profile" tab in Dashboard navbar to navigate to `#profile`
+- Razorpay payment step in PostTaskTab: before calling `createTask`, open Razorpay checkout modal with full task amount. Only after `handler` callback (payment success) call `createTask` and `verifyPayment`.
+- Cancel button in MyTasksTab: only shown when task.status === TaskStatus.open. Calls new `cancelTask` backend function. Hidden once task is accepted.
+- OTP display in MyTasksTab: when task.status === TaskStatus.accepted, show a green info box with the task's OTP (fetched via `getTaskWithOtp`). Customer shares this OTP with tasker for delivery verification.
+- "Task Delivered" success state in MyTasksTab: when task.status === TaskStatus.completed, show a green "Delivered ✓" badge and completion message.
+- `cancelTask` backend function in main.mo: only poster can cancel, only works when status = #open, removes task from map.
+- `cancelTask` method signature in backend.d.ts.
 
 ### Modify
-- `UserProfile` type in `main.mo`: add new fields
-- `saveCallerUserProfile` and `getCallerUserProfile` backend functions accept/return updated type
-- Dashboard Profile button navigates to `#profile` instead of being a no-op
+- PostTaskTab submit button label: "Pay & Post Task" → opens Razorpay, then posts task after payment.
+- MyTasksTab TaskCard: add action slot for cancel/OTP/delivered states.
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Update `UserProfile` in `main.mo` to include `phone`, `location`, `upiId`, `aadharNumber: ?Text`, `studentId: ?Text`
-2. Regenerate backend bindings (handled by generate_motoko_code)
-3. Create `src/frontend/src/pages/MyProfile.tsx` with:
-   - Form fields: Name, Phone, Location, UPI ID, Aadhar Number, Student ID
-   - Validation: all required except aadhar/student where at least one is needed
-   - Prefill from `actor.getCallerUserProfile()`
-   - Save via `actor.saveCallerUserProfile()`
-   - Success message after save
-4. Add `#profile` hash route in `App.tsx` → renders `<MyProfile />`
-5. Wire "Profile" nav pill in Dashboard header to `window.location.hash = '#profile'`
+1. Add `cancelTask(taskId: Text): async Result` to main.mo — only poster, only #open status, deletes task from map.
+2. Add `cancelTask(taskId: string): Promise<Result>` to backendInterface in backend.d.ts.
+3. In Dashboard.tsx PostTaskTab: Load Razorpay JS (https://checkout.razorpay.com/v1/checkout.js) via script tag on mount. On form submit+validate: open `window.Razorpay` checkout with key `rzp_live_SRNbTwyEmzQSvO`, amount in paise, theme color `#00E676`. In `handler` callback: call `actor.verifyPayment(paymentId, '', '', tempId, amount, '', '')` then `actor.createTask(...)`. Show loading during payment. Handle dismiss (go back to form).
+4. In Dashboard.tsx MyTasksTab: For each task card:
+   - status=open: show red "Cancel" button. On click: call `actor.cancelTask(id)`, remove from list.
+   - status=accepted: call `actor.getTaskWithOtp(id)` and show a green box "Your OTP: XXXXXX — Share with tasker at delivery". Also show "Cannot cancel — tasker assigned" note.
+   - status=completed: show "✓ Task Delivered" green badge.

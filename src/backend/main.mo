@@ -309,6 +309,28 @@ actor {
     ?toPublicTask(updatedTask);
   };
 
+
+  // Cancel task - only poster, only when open
+  public shared ({ caller }) func cancelTask(taskId : Text) : async Result {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    switch (tasks.get(taskId)) {
+      case (null) { #err("Task not found") };
+      case (?task) {
+        if (task.poster != caller) {
+          Runtime.trap("Unauthorized: Only task poster can cancel");
+        };
+        switch (task.status) {
+          case (#open) {
+            ignore tasks.remove(taskId);
+            #ok;
+          };
+          case (_) { #err("Task cannot be cancelled after being accepted") };
+        };
+      };
+    };
+  };
   // Public query - anyone can view task details (without OTP)
   public query ({ caller }) func getTask(taskId : Text) : async ?PublicTask {
     switch (tasks.get(taskId)) {

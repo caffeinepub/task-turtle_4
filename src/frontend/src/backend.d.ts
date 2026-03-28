@@ -90,6 +90,7 @@ export enum UserRole {
 }
 export interface backendInterface {
     acceptTask(taskId: string): Promise<PublicTask | null>;
+    cancelTask(taskId: string): Promise<Result>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     completeTask(taskId: string, submittedOtp: string): Promise<PublicTask | null>;
     countTasks(): Promise<bigint>;

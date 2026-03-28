@@ -15,6 +15,8 @@ import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { Dashboard } from "./pages/Dashboard";
 import { LoginPage } from "./pages/LoginPage";
 import MyProfile from "./pages/MyProfile";
+import { TaskerPage } from "./pages/TaskerPage";
+import { WalletPage } from "./pages/WalletPage";
 
 const GREEN = "#00E676";
 
@@ -72,6 +74,14 @@ export default function App() {
 
   if (hash === "#profile") {
     return <MyProfile />;
+  }
+
+  if (hash === "#tasker") {
+    return <TaskerPage />;
+  }
+
+  if (hash === "#wallet") {
+    return <WalletPage />;
   }
 
   // Authenticated → landing page with nav showing "Go to Dashboard"

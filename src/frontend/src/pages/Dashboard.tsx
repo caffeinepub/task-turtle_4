@@ -4,18 +4,18 @@ import {
   ClipboardList,
   IndianRupee,
   Loader2,
-  LogOut,
   MapPin,
   Phone,
   Tag,
-  User,
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { type PublicTask, TaskStatus } from "../backend";
+import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { getTaskerEarning } from "../utils/platformFee";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
 
 const GREEN = "#00E676";
@@ -915,42 +915,50 @@ function FindTasksTab() {
                 <TaskCard
                   task={task}
                   action={
-                    <div className="flex items-center gap-2">
-                      {task.description?.includes("Contact:") && (
-                        <a
-                          href={`tel:${task.description.replace("Contact: ", "")}`}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                          style={{
-                            background: `${GREEN}15`,
-                            color: GREEN,
-                            border: `1px solid ${GREEN}35`,
-                          }}
-                        >
-                          <Phone size={11} />
-                          Call Customer
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleAccept(task.id)}
-                        disabled={
-                          accepting === task.id || acceptedIds.has(task.id)
-                        }
-                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all disabled:opacity-60"
-                        style={{
-                          background: GREEN,
-                          color: "#050505",
-                          boxShadow: `0 0 12px ${GREEN}35`,
-                        }}
-                        data-ocid={`findtasks.primary_button.${i + 1}`}
+                    <div className="flex flex-col items-end gap-2">
+                      <span
+                        className="text-xs font-semibold"
+                        style={{ color: "#00E676" }}
                       >
-                        {accepting === task.id ? (
-                          <Loader2 size={11} className="animate-spin" />
-                        ) : null}
-                        {acceptedIds.has(task.id)
-                          ? "Accepted!"
-                          : "Accept & Earn"}
-                      </button>
+                        You earn ₹{getTaskerEarning(Number(task.amount))}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {task.description?.includes("Contact:") && (
+                          <a
+                            href={`tel:${task.description.replace("Contact: ", "")}`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                            style={{
+                              background: `${GREEN}15`,
+                              color: GREEN,
+                              border: `1px solid ${GREEN}35`,
+                            }}
+                          >
+                            <Phone size={11} />
+                            Call Customer
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleAccept(task.id)}
+                          disabled={
+                            accepting === task.id || acceptedIds.has(task.id)
+                          }
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all disabled:opacity-60"
+                          style={{
+                            background: GREEN,
+                            color: "#050505",
+                            boxShadow: `0 0 12px ${GREEN}35`,
+                          }}
+                          data-ocid={`findtasks.primary_button.${i + 1}`}
+                        >
+                          {accepting === task.id ? (
+                            <Loader2 size={11} className="animate-spin" />
+                          ) : null}
+                          {acceptedIds.has(task.id)
+                            ? "Accepted!"
+                            : "Accept & Earn"}
+                        </button>
+                      </div>
                     </div>
                   }
                 />
@@ -965,17 +973,11 @@ function FindTasksTab() {
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 export function Dashboard() {
-  const { clear, identity } = useInternetIdentity();
+  useInternetIdentity();
   const { actor } = useActor();
   const [tab, setTab] = useState<Tab>("my-tasks");
   const [myTasksCount, setMyTasksCount] = useState(0);
   const [openTasksCount, setOpenTasksCount] = useState(0);
-  const [userName, setUserName] = useState<string | null>(null);
-
-  const principalStr = identity?.getPrincipal().toString();
-  const shortPrincipal = principalStr
-    ? `${principalStr.slice(0, 5)}…${principalStr.slice(-4)}`
-    : "";
 
   useEffect(() => {
     if (!actor) return;
@@ -983,10 +985,9 @@ export function Dashboard() {
       actor.getMyPostedTasks().catch(() => [] as PublicTask[]),
       actor.getAllTasks().catch(() => [] as PublicTask[]),
       actor.getCallerUserProfile().catch(() => null),
-    ]).then(([mine, all, profile]) => {
+    ]).then(([mine, all, _profile]) => {
       setMyTasksCount(mine.length);
       setOpenTasksCount(all.filter((t) => t.status === TaskStatus.open).length);
-      if (profile) setUserName(profile.name);
     });
   }, [actor]);
 
@@ -995,11 +996,6 @@ export function Dashboard() {
     { id: "post-task" as Tab, label: "Post Task", count: null },
     { id: "find-tasks" as Tab, label: "Find Tasks", count: openTasksCount },
   ];
-
-  function handleLogout() {
-    clear();
-    window.location.hash = "";
-  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
@@ -1021,100 +1017,7 @@ export function Dashboard() {
         }}
       />
 
-      {/* Navbar */}
-      <header
-        className="sticky top-0 z-50"
-        style={{
-          background: "rgba(5,5,5,0.85)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-[64px]">
-            {/* Logo */}
-            <a
-              href="/"
-              className="flex items-center gap-2"
-              data-ocid="dashboard.link"
-            >
-              <span className="text-xl">🐢</span>
-              <span className="text-base font-bold text-white">
-                <span style={{ color: GREEN }}>Task</span> Turtle
-              </span>
-            </a>
-
-            {/* Center pills — hidden on mobile */}
-            <nav
-              className="hidden md:flex items-center gap-1 px-2 py-1 rounded-full"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              {[
-                { label: "Dashboard", active: true },
-                { label: "Tasker", active: false },
-                { label: "Wallet", active: false },
-                { label: "Profile", active: false },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
-                  style={{
-                    background: item.active ? GREEN : "transparent",
-                    color: item.active ? "#050505" : "rgba(255,255,255,0.5)",
-                  }}
-                  onClick={() => {
-                    if (item.label === "Profile")
-                      window.location.hash = "#profile";
-                  }}
-                  data-ocid={`dashboard.${item.label.toLowerCase()}.tab`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-
-            {/* Right: user + logout */}
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{
-                    background: "rgba(0,230,118,0.12)",
-                    border: `1px solid ${GREEN}30`,
-                  }}
-                >
-                  <User size={13} style={{ color: GREEN }} />
-                </div>
-                <span
-                  className="text-xs"
-                  style={{ color: "rgba(255,255,255,0.5)" }}
-                >
-                  {userName || shortPrincipal}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:opacity-80"
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.6)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
-                data-ocid="dashboard.logout.button"
-              >
-                <LogOut size={12} />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppNavbar currentPage="dashboard" />
 
       {/* Main */}
       <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">

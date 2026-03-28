@@ -10,6 +10,7 @@ import {
   User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
@@ -218,33 +219,20 @@ export default function MyProfile() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
-      {/* Header */}
-      <header
-        className="sticky top-0 z-50 flex items-center gap-4 px-4 md:px-8 py-4"
-        style={{
-          background: "rgba(5,5,5,0.9)",
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <button
-          type="button"
-          data-ocid="profile.back.button"
-          onClick={() => {
-            window.location.hash = "#dashboard";
-          }}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.7)" }}
-        >
-          <ArrowLeft size={16} />
-          Back
-        </button>
-        <h1 className="text-lg font-bold" style={{ color: "white" }}>
-          My Profile
-        </h1>
-      </header>
+      <AppNavbar currentPage="profile" />
 
       <main className="max-w-xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white">
+            My <span style={{ color: GREEN }}>Profile</span>
+          </h1>
+          <p
+            className="text-sm mt-1"
+            style={{ color: "rgba(255,255,255,0.45)" }}
+          >
+            Manage your personal details
+          </p>
+        </div>
         {loading ? (
           <div
             className="flex items-center justify-center py-20"

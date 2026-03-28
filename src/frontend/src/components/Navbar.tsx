@@ -1,6 +1,7 @@
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
@@ -12,12 +13,19 @@ const NAV_LINKS = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { identity, clear } = useInternetIdentity();
+  const isAuthenticated = !!identity;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  function handleLogout() {
+    clear();
+    window.location.hash = "";
+  }
 
   return (
     <header
@@ -54,22 +62,49 @@ export function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <button
-              type="button"
-              className="px-5 py-2 text-sm font-semibold rounded-full border transition-all duration-200 hover:bg-[#00E676]/10"
-              style={{ borderColor: "#00E676", color: "#00E676" }}
-              data-ocid="navbar.login_button"
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              className="px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,230,118,0.4)] active:scale-95"
-              style={{ backgroundColor: "#00E676", color: "#050505" }}
-              data-ocid="navbar.post_task_button"
-            >
-              Post a Task
-            </button>
+            {isAuthenticated ? (
+              <>
+                <a
+                  href="#dashboard"
+                  className="px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,230,118,0.4)] active:scale-95 flex items-center gap-1.5"
+                  style={{ backgroundColor: "#00E676", color: "#050505" }}
+                  data-ocid="navbar.dashboard_link"
+                >
+                  Go to Dashboard →
+                </a>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 hover:bg-white/5"
+                  style={{
+                    borderColor: "rgba(255,255,255,0.15)",
+                    color: "rgba(255,255,255,0.6)",
+                  }}
+                  data-ocid="navbar.logout_button"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="px-5 py-2 text-sm font-semibold rounded-full border transition-all duration-200 hover:bg-[#00E676]/10"
+                  style={{ borderColor: "#00E676", color: "#00E676" }}
+                  data-ocid="navbar.login_button"
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  className="px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,230,118,0.4)] active:scale-95"
+                  style={{ backgroundColor: "#00E676", color: "#050505" }}
+                  data-ocid="navbar.post_task_button"
+                >
+                  Post a Task
+                </button>
+              </>
+            )}
           </div>
 
           <button
@@ -106,22 +141,56 @@ export function Navbar() {
                 </a>
               ))}
               <div className="flex gap-3 mt-4 pt-4 border-t border-white/10">
-                <button
-                  type="button"
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-full border"
-                  style={{ borderColor: "#00E676", color: "#00E676" }}
-                  data-ocid="navbar.login_button"
-                >
-                  Login
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-full"
-                  style={{ backgroundColor: "#00E676", color: "#050505" }}
-                  data-ocid="navbar.post_task_button"
-                >
-                  Post a Task
-                </button>
+                {isAuthenticated ? (
+                  <>
+                    <button
+                      type="button"
+                      className="flex-1 py-2.5 text-sm font-semibold rounded-full text-center"
+                      style={{ backgroundColor: "#00E676", color: "#050505" }}
+                      onClick={() => {
+                        setMobileOpen(false);
+                        window.location.hash = "dashboard";
+                      }}
+                      data-ocid="navbar.dashboard_link"
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileOpen(false);
+                        handleLogout();
+                      }}
+                      className="flex-1 py-2.5 text-sm font-medium rounded-full border"
+                      style={{
+                        borderColor: "rgba(255,255,255,0.15)",
+                        color: "rgba(255,255,255,0.6)",
+                      }}
+                      data-ocid="navbar.logout_button"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="flex-1 py-2.5 text-sm font-semibold rounded-full border"
+                      style={{ borderColor: "#00E676", color: "#00E676" }}
+                      data-ocid="navbar.login_button"
+                    >
+                      Login
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 py-2.5 text-sm font-semibold rounded-full"
+                      style={{ backgroundColor: "#00E676", color: "#050505" }}
+                      data-ocid="navbar.post_task_button"
+                    >
+                      Post a Task
+                    </button>
+                  </>
+                )}
               </div>
             </nav>
           </motion.div>

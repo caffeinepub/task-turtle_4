@@ -7,9 +7,13 @@ import {
 } from "lucide-react";
 import type { Variants } from "motion/react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import type { PublicTask } from "../backend.d";
+import { useActor } from "../hooks/useActor";
 
 interface TaskTimelineProps {
-  currentStage?: number; // 1–5, default 1
+  currentStage?: number; // 1–5, default 1 (used when no taskId)
+  taskId?: string; // if provided, fetch real task status
 }
 
 const STAGES = [
@@ -21,6 +25,12 @@ const STAGES = [
 ];
 
 const GREEN = "#00E676";
+
+function taskStatusToStage(status: string): number {
+  if (status === "accepted") return 2;
+  if (status === "completed") return 5;
+  return 1; // open
+}
 
 const containerVariants: Variants = {
   hidden: {},
@@ -36,9 +46,35 @@ const itemVariants: Variants = {
   },
 };
 
-export function TaskTimeline({ currentStage = 1 }: TaskTimelineProps) {
-  const current = Math.max(1, Math.min(5, currentStage));
+export function TaskTimeline({ currentStage = 1, taskId }: TaskTimelineProps) {
+  const { actor, isFetching } = useActor();
+  const [resolvedStage, setResolvedStage] = useState<number>(currentStage);
+  const [taskTitle, setTaskTitle] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!taskId || isFetching || !actor) {
+      setResolvedStage(currentStage);
+      return;
+    }
+
+    let cancelled = false;
+    actor
+      .getTask(taskId)
+      .then((task: PublicTask | null) => {
+        if (cancelled || !task) return;
+        setResolvedStage(taskStatusToStage(task.status as string));
+        setTaskTitle(task.title);
+      })
+      .catch(() => {
+        // silently keep currentStage on error
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId, actor, isFetching, currentStage]);
+
+  const current = Math.max(1, Math.min(5, resolvedStage));
   const completedFraction = (current - 1) / (STAGES.length - 1);
 
   return (
@@ -57,7 +93,9 @@ export function TaskTimeline({ currentStage = 1 }: TaskTimelineProps) {
         <p className="text-xs font-semibold tracking-widest uppercase text-white/40 mb-1">
           Order Status
         </p>
-        <h2 className="text-white text-lg font-bold">Tracking your task</h2>
+        <h2 className="text-white text-lg font-bold">
+          {taskTitle ? taskTitle : "Tracking your task"}
+        </h2>
       </div>
 
       {/* Timeline */}

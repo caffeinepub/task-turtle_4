@@ -8,6 +8,23 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const TaskStatus = IDL.Variant({
+  'open' : IDL.Null,
+  'completed' : IDL.Null,
+  'accepted' : IDL.Null,
+});
+export const PublicTask = IDL.Record({
+  'id' : IDL.Text,
+  'status' : TaskStatus,
+  'title' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'description' : IDL.Text,
+  'category' : IDL.Text,
+  'acceptor' : IDL.Opt(IDL.Principal),
+  'amount' : IDL.Nat,
+  'location' : IDL.Text,
+  'poster' : IDL.Principal,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -23,11 +40,23 @@ export const PaymentStatus = IDL.Variant({
 export const EscrowPayment = IDL.Record({
   'status' : PaymentStatus,
   'taskerUpiId' : IDL.Text,
-  'userId' : IDL.Text,
   'taskId' : IDL.Text,
   'razorpayOrderId' : IDL.Text,
   'paymentId' : IDL.Text,
   'amount' : IDL.Nat,
+});
+export const Task = IDL.Record({
+  'id' : IDL.Text,
+  'otp' : IDL.Text,
+  'status' : TaskStatus,
+  'title' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'description' : IDL.Text,
+  'category' : IDL.Text,
+  'acceptor' : IDL.Opt(IDL.Principal),
+  'amount' : IDL.Nat,
+  'location' : IDL.Text,
+  'poster' : IDL.Principal,
 });
 export const http_header = IDL.Record({
   'value' : IDL.Text,
@@ -50,20 +79,33 @@ export const TransformationOutput = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'acceptTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'completeTask' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(PublicTask)], []),
+  'countTasks' : IDL.Func([], [IDL.Nat], ['query']),
   'createRazorpayOrder' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
       [Result],
       [],
     ),
+  'createTask' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+      [IDL.Opt(IDL.Text)],
+      [],
+    ),
+  'getAllTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getMyAcceptedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
+  'getMyPostedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
   'getPaymentByTask' : IDL.Func(
       [IDL.Text],
       [IDL.Opt(EscrowPayment)],
       ['query'],
     ),
   'getPayments' : IDL.Func([], [IDL.Vec(EscrowPayment)], ['query']),
+  'getTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], ['query']),
+  'getTaskWithOtp' : IDL.Func([IDL.Text], [IDL.Opt(Task)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -87,6 +129,23 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const TaskStatus = IDL.Variant({
+    'open' : IDL.Null,
+    'completed' : IDL.Null,
+    'accepted' : IDL.Null,
+  });
+  const PublicTask = IDL.Record({
+    'id' : IDL.Text,
+    'status' : TaskStatus,
+    'title' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'description' : IDL.Text,
+    'category' : IDL.Text,
+    'acceptor' : IDL.Opt(IDL.Principal),
+    'amount' : IDL.Nat,
+    'location' : IDL.Text,
+    'poster' : IDL.Principal,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -102,11 +161,23 @@ export const idlFactory = ({ IDL }) => {
   const EscrowPayment = IDL.Record({
     'status' : PaymentStatus,
     'taskerUpiId' : IDL.Text,
-    'userId' : IDL.Text,
     'taskId' : IDL.Text,
     'razorpayOrderId' : IDL.Text,
     'paymentId' : IDL.Text,
     'amount' : IDL.Nat,
+  });
+  const Task = IDL.Record({
+    'id' : IDL.Text,
+    'otp' : IDL.Text,
+    'status' : TaskStatus,
+    'title' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'description' : IDL.Text,
+    'category' : IDL.Text,
+    'acceptor' : IDL.Opt(IDL.Principal),
+    'amount' : IDL.Nat,
+    'location' : IDL.Text,
+    'poster' : IDL.Principal,
   });
   const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
   const http_request_result = IDL.Record({
@@ -126,20 +197,33 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'acceptTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'completeTask' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(PublicTask)], []),
+    'countTasks' : IDL.Func([], [IDL.Nat], ['query']),
     'createRazorpayOrder' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
         [Result],
         [],
       ),
+    'createTask' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+        [IDL.Opt(IDL.Text)],
+        [],
+      ),
+    'getAllTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getMyAcceptedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
+    'getMyPostedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
     'getPaymentByTask' : IDL.Func(
         [IDL.Text],
         [IDL.Opt(EscrowPayment)],
         ['query'],
       ),
     'getPayments' : IDL.Func([], [IDL.Vec(EscrowPayment)], ['query']),
+    'getTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], ['query']),
+    'getTaskWithOtp' : IDL.Func([IDL.Text], [IDL.Opt(Task)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],

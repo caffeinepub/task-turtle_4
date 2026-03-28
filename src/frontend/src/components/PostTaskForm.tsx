@@ -3,12 +3,14 @@ import {
   ChevronDown,
   ClipboardList,
   IndianRupee,
+  Loader2,
   MapPin,
   Phone,
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useActor } from "../hooks/useActor";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
 
 type Category = "" | "Grocery" | "Pharmacy" | "Errands";
@@ -64,6 +66,7 @@ function makeBlur(hasError: boolean) {
 }
 
 export default function PostTaskForm() {
+  const { actor } = useActor();
   const [fields, setFields] = useState<FormFields>({
     category: "",
     storeLocation: "",
@@ -73,10 +76,12 @@ export default function PostTaskForm() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [surgeActive, setSurgeActive] = useState(() => isSurgeActive());
 
   useEffect(() => {
-    // Re-check surge status every minute
     const interval = setInterval(() => {
       setSurgeActive(isSurgeActive());
     }, 60_000);
@@ -102,11 +107,48 @@ export default function PostTaskForm() {
     return errs;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
-    if (Object.keys(errs).length === 0) setSubmitted(true);
+    if (Object.keys(errs).length > 0) return;
+
+    if (!actor) {
+      setSubmitError("Not connected to backend. Please refresh and try again.");
+      return;
+    }
+
+    setIsLoading(true);
+    setSubmitError(null);
+
+    try {
+      const finalAmount = surgePrice ?? baseAmount;
+      const title = `${fields.category} at ${fields.storeLocation}`;
+      const description = `Contact: ${fields.contactNumber}`;
+
+      const id = await actor.createTask(
+        title,
+        description,
+        fields.category,
+        fields.storeLocation,
+        BigInt(Math.round(finalAmount)),
+      );
+
+      if (id === null) {
+        setSubmitError("Failed to create task. Please try again.");
+      } else {
+        setTaskId(id);
+        setSubmitted(true);
+      }
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function handleReset() {
@@ -119,6 +161,8 @@ export default function PostTaskForm() {
     });
     setErrors({});
     setSubmitted(false);
+    setTaskId(null);
+    setSubmitError(null);
   }
 
   const labelClass = "text-xs font-medium tracking-wide uppercase";
@@ -144,6 +188,7 @@ export default function PostTaskForm() {
             boxShadow:
               "0 8px 40px rgba(0,230,118,0.12), 0 2px 8px rgba(0,0,0,0.6)",
           }}
+          data-ocid="posttask.success_state"
         >
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -159,6 +204,18 @@ export default function PostTaskForm() {
             Your task has been submitted successfully. A tasker will reach out
             to you shortly.
           </p>
+          {taskId && (
+            <div
+              className="px-4 py-2 rounded-xl text-xs font-mono"
+              style={{
+                background: "rgba(0,230,118,0.08)",
+                border: "1px solid rgba(0,230,118,0.2)",
+                color: "rgba(0,230,118,0.8)",
+              }}
+            >
+              Task ID: {taskId}
+            </div>
+          )}
           {fields.tip && (
             <span
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
@@ -461,7 +518,7 @@ export default function PostTaskForm() {
                     style={{ color: "#FFA000" }}
                   >
                     <IndianRupee size={11} />
-                    Surge price: ₹{surgePrice}
+                    Surge price: \u20b9{surgePrice}
                     <span style={{ color: "rgba(255,255,255,0.35)" }}>
                       (+20%)
                     </span>
@@ -593,20 +650,45 @@ export default function PostTaskForm() {
               </AnimatePresence>
             </div>
 
+            {/* Submit error */}
+            <AnimatePresence>
+              {submitError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                  className="rounded-xl px-4 py-3 text-sm"
+                  style={{
+                    background: "rgba(239,68,68,0.1)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    color: "#f87171",
+                  }}
+                  data-ocid="posttask.error_state"
+                >
+                  {submitError}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Submit */}
             <motion.button
               type="submit"
               data-ocid="posttask.submit_button"
-              whileHover={{ scale: 1.015 }}
-              whileTap={{ scale: 0.97 }}
-              className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 mt-1"
+              disabled={isLoading}
+              whileHover={isLoading ? {} : { scale: 1.015 }}
+              whileTap={isLoading ? {} : { scale: 0.97 }}
+              className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 mt-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               style={{
                 background: "#00E676",
                 color: "#050505",
-                boxShadow: "0 4px 20px rgba(0,230,118,0.3)",
+                boxShadow: isLoading
+                  ? "none"
+                  : "0 4px 20px rgba(0,230,118,0.3)",
               }}
             >
-              Post Task
+              {isLoading && <Loader2 size={16} className="animate-spin" />}
+              {isLoading ? "Posting..." : "Post Task"}
             </motion.button>
           </form>
         </div>

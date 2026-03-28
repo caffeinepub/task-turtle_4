@@ -13,7 +13,6 @@ import type { Principal } from '@icp-sdk/core/principal';
 export interface EscrowPayment {
   'status' : PaymentStatus,
   'taskerUpiId' : string,
-  'userId' : string,
   'taskId' : string,
   'razorpayOrderId' : string,
   'paymentId' : string,
@@ -22,8 +21,36 @@ export interface EscrowPayment {
 export type PaymentStatus = { 'PAID' : null } |
   { 'COMPLETED' : null } |
   { 'FAILED' : null };
+export interface PublicTask {
+  'id' : string,
+  'status' : TaskStatus,
+  'title' : string,
+  'createdAt' : bigint,
+  'description' : string,
+  'category' : string,
+  'acceptor' : [] | [Principal],
+  'amount' : bigint,
+  'location' : string,
+  'poster' : Principal,
+}
 export type Result = { 'ok' : null } |
   { 'err' : string };
+export interface Task {
+  'id' : string,
+  'otp' : string,
+  'status' : TaskStatus,
+  'title' : string,
+  'createdAt' : bigint,
+  'description' : string,
+  'category' : string,
+  'acceptor' : [] | [Principal],
+  'amount' : bigint,
+  'location' : string,
+  'poster' : Principal,
+}
+export type TaskStatus = { 'open' : null } |
+  { 'completed' : null } |
+  { 'accepted' : null };
 export interface TransformationInput {
   'context' : Uint8Array,
   'response' : http_request_result,
@@ -45,16 +72,24 @@ export interface http_request_result {
 }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'acceptTask' : ActorMethod<[string], [] | [PublicTask]>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  /**
-   * / `maybeCaller` is a default system function that can be used to fetch the caller if available.
-   * / In the first update call after each upgrade, the caller is not defined.
-   */
+  'completeTask' : ActorMethod<[string, string], [] | [PublicTask]>,
+  'countTasks' : ActorMethod<[], bigint>,
   'createRazorpayOrder' : ActorMethod<[bigint, string, string, string], Result>,
+  'createTask' : ActorMethod<
+    [string, string, string, string, bigint],
+    [] | [string]
+  >,
+  'getAllTasks' : ActorMethod<[], Array<PublicTask>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getMyAcceptedTasks' : ActorMethod<[], Array<PublicTask>>,
+  'getMyPostedTasks' : ActorMethod<[], Array<PublicTask>>,
   'getPaymentByTask' : ActorMethod<[string], [] | [EscrowPayment]>,
   'getPayments' : ActorMethod<[], Array<EscrowPayment>>,
+  'getTask' : ActorMethod<[string], [] | [PublicTask]>,
+  'getTaskWithOtp' : ActorMethod<[string], [] | [Task]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'markPayoutComplete' : ActorMethod<[string], Result>,

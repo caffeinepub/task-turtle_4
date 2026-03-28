@@ -15,7 +15,6 @@ export interface http_request_result {
 export interface EscrowPayment {
     status: PaymentStatus;
     taskerUpiId: string;
-    userId: string;
     taskId: string;
     razorpayOrderId: string;
     paymentId: string;
@@ -37,6 +36,31 @@ export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
 }
+export interface Task {
+    id: string;
+    otp: string;
+    status: TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor?: Principal;
+    amount: bigint;
+    location: string;
+    poster: Principal;
+}
+export interface PublicTask {
+    id: string;
+    status: TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor?: Principal;
+    amount: bigint;
+    location: string;
+    poster: Principal;
+}
 export interface UserProfile {
     name: string;
 }
@@ -49,26 +73,36 @@ export enum PaymentStatus {
     COMPLETED = "COMPLETED",
     FAILED = "FAILED"
 }
+export enum TaskStatus {
+    open = "open",
+    completed = "completed",
+    accepted = "accepted"
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
     guest = "guest"
 }
 export interface backendInterface {
+    acceptTask(taskId: string): Promise<PublicTask | null>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    /**
-     * / `maybeCaller` is a default system function that can be used to fetch the caller if available.
-     * / In the first update call after each upgrade, the caller is not defined.
-     */
-    createRazorpayOrder(amount: bigint, taskId: string, userId: string, taskerUpiId: string): Promise<Result>;
+    completeTask(taskId: string, submittedOtp: string): Promise<PublicTask | null>;
+    countTasks(): Promise<bigint>;
+    createRazorpayOrder(amount: bigint, taskId: string, _userId: string, _taskerUpiId: string): Promise<Result>;
+    createTask(title: string, description: string, category: string, location: string, amount: bigint): Promise<string | null>;
+    getAllTasks(): Promise<Array<PublicTask>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getMyAcceptedTasks(): Promise<Array<PublicTask>>;
+    getMyPostedTasks(): Promise<Array<PublicTask>>;
     getPaymentByTask(taskId: string): Promise<EscrowPayment | null>;
     getPayments(): Promise<Array<EscrowPayment>>;
+    getTask(taskId: string): Promise<PublicTask | null>;
+    getTaskWithOtp(taskId: string): Promise<Task | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     markPayoutComplete(paymentId: string): Promise<Result>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
-    verifyPayment(razorpayPaymentId: string, razorpayOrderId: string, razorpaySignature: string, taskId: string, amount: bigint, userId: string, taskerUpiId: string): Promise<Result>;
+    verifyPayment(razorpayPaymentId: string, razorpayOrderId: string, _razorpaySignature: string, taskId: string, amount: bigint, _userId: string, taskerUpiId: string): Promise<Result>;
 }

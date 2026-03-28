@@ -97,7 +97,6 @@ export interface http_request_result {
 export interface EscrowPayment {
     status: PaymentStatus;
     taskerUpiId: string;
-    userId: string;
     taskId: string;
     razorpayOrderId: string;
     paymentId: string;
@@ -119,6 +118,31 @@ export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
 }
+export interface Task {
+    id: string;
+    otp: string;
+    status: TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor?: Principal;
+    amount: bigint;
+    location: string;
+    poster: Principal;
+}
+export interface PublicTask {
+    id: string;
+    status: TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor?: Principal;
+    amount: bigint;
+    location: string;
+    poster: Principal;
+}
 export interface UserProfile {
     name: string;
 }
@@ -131,6 +155,11 @@ export enum PaymentStatus {
     COMPLETED = "COMPLETED",
     FAILED = "FAILED"
 }
+export enum TaskStatus {
+    open = "open",
+    completed = "completed",
+    accepted = "accepted"
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -138,24 +167,29 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    acceptTask(taskId: string): Promise<PublicTask | null>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    /**
-     * / `maybeCaller` is a default system function that can be used to fetch the caller if available.
-     * / In the first update call after each upgrade, the caller is not defined.
-     */
-    createRazorpayOrder(amount: bigint, taskId: string, userId: string, taskerUpiId: string): Promise<Result>;
+    completeTask(taskId: string, submittedOtp: string): Promise<PublicTask | null>;
+    countTasks(): Promise<bigint>;
+    createRazorpayOrder(amount: bigint, taskId: string, _userId: string, _taskerUpiId: string): Promise<Result>;
+    createTask(title: string, description: string, category: string, location: string, amount: bigint): Promise<string | null>;
+    getAllTasks(): Promise<Array<PublicTask>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getMyAcceptedTasks(): Promise<Array<PublicTask>>;
+    getMyPostedTasks(): Promise<Array<PublicTask>>;
     getPaymentByTask(taskId: string): Promise<EscrowPayment | null>;
     getPayments(): Promise<Array<EscrowPayment>>;
+    getTask(taskId: string): Promise<PublicTask | null>;
+    getTaskWithOtp(taskId: string): Promise<Task | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     markPayoutComplete(paymentId: string): Promise<Result>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
-    verifyPayment(razorpayPaymentId: string, razorpayOrderId: string, razorpaySignature: string, taskId: string, amount: bigint, userId: string, taskerUpiId: string): Promise<Result>;
+    verifyPayment(razorpayPaymentId: string, razorpayOrderId: string, _razorpaySignature: string, taskId: string, amount: bigint, _userId: string, taskerUpiId: string): Promise<Result>;
 }
-import type { EscrowPayment as _EscrowPayment, PaymentStatus as _PaymentStatus, Result as _Result, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { EscrowPayment as _EscrowPayment, PaymentStatus as _PaymentStatus, PublicTask as _PublicTask, Result as _Result, Task as _Task, TaskStatus as _TaskStatus, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -172,17 +206,59 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async acceptTask(arg0: string): Promise<PublicTask | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.acceptTask(arg0);
+                return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.acceptTask(arg0);
+            return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n7(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n7(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async completeTask(arg0: string, arg1: string): Promise<PublicTask | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.completeTask(arg0, arg1);
+                return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.completeTask(arg0, arg1);
+            return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async countTasks(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.countTasks();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.countTasks();
             return result;
         }
     }
@@ -190,84 +266,168 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.createRazorpayOrder(arg0, arg1, arg2, arg3);
-                return from_candid_Result_n3(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n9(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.createRazorpayOrder(arg0, arg1, arg2, arg3);
-            return from_candid_Result_n3(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n9(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async createTask(arg0: string, arg1: string, arg2: string, arg3: string, arg4: bigint): Promise<string | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createTask(arg0, arg1, arg2, arg3, arg4);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createTask(arg0, arg1, arg2, arg3, arg4);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllTasks(): Promise<Array<PublicTask>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllTasks();
+                return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllTasks();
+            return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n6(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n14(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n6(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n14(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getMyAcceptedTasks(): Promise<Array<PublicTask>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyAcceptedTasks();
+                return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyAcceptedTasks();
+            return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getMyPostedTasks(): Promise<Array<PublicTask>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyPostedTasks();
+                return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyPostedTasks();
+            return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
         }
     }
     async getPaymentByTask(arg0: string): Promise<EscrowPayment | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getPaymentByTask(arg0);
-                return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getPaymentByTask(arg0);
-            return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
         }
     }
     async getPayments(): Promise<Array<EscrowPayment>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getPayments();
-                return from_candid_vec_n13(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getPayments();
-            return from_candid_vec_n13(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n21(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getTask(arg0: string): Promise<PublicTask | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTask(arg0);
+                return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTask(arg0);
+            return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getTaskWithOtp(arg0: string): Promise<Task | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTaskWithOtp(arg0);
+                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTaskWithOtp(arg0);
+            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -288,14 +448,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.markPayoutComplete(arg0);
-                return from_candid_Result_n3(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n9(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.markPayoutComplete(arg0);
-            return from_candid_Result_n3(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n9(this._uploadFile, this._downloadFile, result);
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
@@ -330,39 +490,59 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.verifyPayment(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
-                return from_candid_Result_n3(this._uploadFile, this._downloadFile, result);
+                return from_candid_Result_n9(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.verifyPayment(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
-            return from_candid_Result_n3(this._uploadFile, this._downloadFile, result);
+            return from_candid_Result_n9(this._uploadFile, this._downloadFile, result);
         }
     }
 }
-function from_candid_EscrowPayment_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _EscrowPayment): EscrowPayment {
-    return from_candid_record_n10(_uploadFile, _downloadFile, value);
+function from_candid_EscrowPayment_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _EscrowPayment): EscrowPayment {
+    return from_candid_record_n18(_uploadFile, _downloadFile, value);
 }
-function from_candid_PaymentStatus_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PaymentStatus): PaymentStatus {
-    return from_candid_variant_n12(_uploadFile, _downloadFile, value);
+function from_candid_PaymentStatus_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PaymentStatus): PaymentStatus {
+    return from_candid_variant_n20(_uploadFile, _downloadFile, value);
 }
-function from_candid_Result_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result): Result {
-    return from_candid_variant_n4(_uploadFile, _downloadFile, value);
+function from_candid_PublicTask_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PublicTask): PublicTask {
+    return from_candid_record_n3(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n7(_uploadFile, _downloadFile, value);
+function from_candid_Result_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result): Result {
+    return from_candid_variant_n10(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_TaskStatus_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TaskStatus): TaskStatus {
+    return from_candid_variant_n5(_uploadFile, _downloadFile, value);
+}
+function from_candid_Task_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Task): Task {
+    return from_candid_record_n24(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n15(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PublicTask]): PublicTask | null {
+    return value.length === 0 ? null : from_candid_PublicTask_n2(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_EscrowPayment]): EscrowPayment | null {
-    return value.length === 0 ? null : from_candid_EscrowPayment_n9(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+    return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_EscrowPayment]): EscrowPayment | null {
+    return value.length === 0 ? null : from_candid_EscrowPayment_n17(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Task]): Task | null {
+    return value.length === 0 ? null : from_candid_Task_n23(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Principal]): Principal | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     status: _PaymentStatus;
     taskerUpiId: string;
-    userId: string;
     taskId: string;
     razorpayOrderId: string;
     paymentId: string;
@@ -370,32 +550,96 @@ function from_candid_record_n10(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): {
     status: PaymentStatus;
     taskerUpiId: string;
-    userId: string;
     taskId: string;
     razorpayOrderId: string;
     paymentId: string;
     amount: bigint;
 } {
     return {
-        status: from_candid_PaymentStatus_n11(_uploadFile, _downloadFile, value.status),
+        status: from_candid_PaymentStatus_n19(_uploadFile, _downloadFile, value.status),
         taskerUpiId: value.taskerUpiId,
-        userId: value.userId,
         taskId: value.taskId,
         razorpayOrderId: value.razorpayOrderId,
         paymentId: value.paymentId,
         amount: value.amount
     };
 }
-function from_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    PAID: null;
-} | {
-    COMPLETED: null;
-} | {
-    FAILED: null;
-}): PaymentStatus {
-    return "PAID" in value ? PaymentStatus.PAID : "COMPLETED" in value ? PaymentStatus.COMPLETED : "FAILED" in value ? PaymentStatus.FAILED : value;
+function from_candid_record_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    otp: string;
+    status: _TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor: [] | [Principal];
+    amount: bigint;
+    location: string;
+    poster: Principal;
+}): {
+    id: string;
+    otp: string;
+    status: TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor?: Principal;
+    amount: bigint;
+    location: string;
+    poster: Principal;
+} {
+    return {
+        id: value.id,
+        otp: value.otp,
+        status: from_candid_TaskStatus_n4(_uploadFile, _downloadFile, value.status),
+        title: value.title,
+        createdAt: value.createdAt,
+        description: value.description,
+        category: value.category,
+        acceptor: record_opt_to_undefined(from_candid_opt_n6(_uploadFile, _downloadFile, value.acceptor)),
+        amount: value.amount,
+        location: value.location,
+        poster: value.poster
+    };
 }
-function from_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    status: _TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor: [] | [Principal];
+    amount: bigint;
+    location: string;
+    poster: Principal;
+}): {
+    id: string;
+    status: TaskStatus;
+    title: string;
+    createdAt: bigint;
+    description: string;
+    category: string;
+    acceptor?: Principal;
+    amount: bigint;
+    location: string;
+    poster: Principal;
+} {
+    return {
+        id: value.id,
+        status: from_candid_TaskStatus_n4(_uploadFile, _downloadFile, value.status),
+        title: value.title,
+        createdAt: value.createdAt,
+        description: value.description,
+        category: value.category,
+        acceptor: record_opt_to_undefined(from_candid_opt_n6(_uploadFile, _downloadFile, value.acceptor)),
+        amount: value.amount,
+        location: value.location,
+        poster: value.poster
+    };
+}
+function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: null;
 } | {
     err: string;
@@ -414,7 +658,7 @@ function from_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uin
         err: value.err
     } : value;
 }
-function from_candid_variant_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -423,13 +667,34 @@ function from_candid_variant_n7(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_EscrowPayment>): Array<EscrowPayment> {
-    return value.map((x)=>from_candid_EscrowPayment_n9(_uploadFile, _downloadFile, x));
+function from_candid_variant_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    PAID: null;
+} | {
+    COMPLETED: null;
+} | {
+    FAILED: null;
+}): PaymentStatus {
+    return "PAID" in value ? PaymentStatus.PAID : "COMPLETED" in value ? PaymentStatus.COMPLETED : "FAILED" in value ? PaymentStatus.FAILED : value;
 }
-function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
-    return to_candid_variant_n2(_uploadFile, _downloadFile, value);
+function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    open: null;
+} | {
+    completed: null;
+} | {
+    accepted: null;
+}): TaskStatus {
+    return "open" in value ? TaskStatus.open : "completed" in value ? TaskStatus.completed : "accepted" in value ? TaskStatus.accepted : value;
 }
-function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
+function from_candid_vec_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_PublicTask>): Array<PublicTask> {
+    return value.map((x)=>from_candid_PublicTask_n2(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_EscrowPayment>): Array<EscrowPayment> {
+    return value.map((x)=>from_candid_EscrowPayment_n17(_uploadFile, _downloadFile, x));
+}
+function to_candid_UserRole_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
+    return to_candid_variant_n8(_uploadFile, _downloadFile, value);
+}
+function to_candid_variant_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
     admin: null;
 } | {
     user: null;

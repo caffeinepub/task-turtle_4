@@ -1,6 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { FeaturedTasks } from "./components/FeaturedTasks";
 import { Footer } from "./components/Footer";
@@ -11,10 +11,27 @@ import { Navbar } from "./components/Navbar";
 import { OTPVerification } from "./components/OTPVerification";
 import { PaymentDemo } from "./components/PaymentDemo";
 import { TaskTimeline } from "./components/TaskTimeline";
+import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { Dashboard } from "./pages/Dashboard";
+import { LoginPage } from "./pages/LoginPage";
 
 const GREEN = "#00E676";
 
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const handler = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+  return hash;
+}
+
 export default function App() {
+  const { identity, isInitializing } = useInternetIdentity();
+  const hash = useHashRoute();
+  const isAuthenticated = !!identity;
+
   const [showOTP, setShowOTP] = useState(false);
   const [verified, setVerified] = useState(false);
 
@@ -24,6 +41,35 @@ export default function App() {
     setTimeout(() => setVerified(false), 3500);
   }
 
+  // While loading saved identity, show a minimal spinner
+  if (isInitializing) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "#050505" }}
+      >
+        <div
+          className="w-12 h-12 rounded-full border-2 animate-spin"
+          style={{
+            borderColor: "rgba(0,230,118,0.2)",
+            borderTopColor: "#00E676",
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Not authenticated → show login
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  // Authenticated + #dashboard → show dashboard
+  if (hash === "#dashboard") {
+    return <Dashboard />;
+  }
+
+  // Authenticated → landing page with nav showing "Go to Dashboard"
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"

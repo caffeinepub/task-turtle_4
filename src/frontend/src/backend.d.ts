@@ -62,7 +62,12 @@ export interface PublicTask {
     poster: Principal;
 }
 export interface UserProfile {
+    studentId?: string;
     name: string;
+    aadharNumber?: string;
+    upiId: string;
+    phone: string;
+    location: string;
 }
 export interface http_header {
     value: string;

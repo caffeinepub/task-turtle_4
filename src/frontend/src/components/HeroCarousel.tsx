@@ -1,57 +1,41 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const SLIDES = [
-  {
-    src: "/assets/generated/carousel-banner.dim_800x500.jpg",
-    label: "Task Delivery",
-  },
-  {
-    src: "/assets/generated/carousel-grocery.dim_800x500.jpg",
-    label: "Grocery Pickup",
-  },
-  {
-    src: "/assets/generated/carousel-courier.dim_800x500.jpg",
-    label: "Courier Delivery",
-  },
-  {
-    src: "/assets/generated/carousel-homehelp.dim_800x500.jpg",
-    label: "Home Help",
-  },
+const img1 = "/assets/generated/carousel-banner.dim_800x500.jpg";
+const img2 = "/assets/generated/carousel-grocery.dim_800x500.jpg";
+const img3 = "/assets/generated/carousel-courier.dim_800x500.jpg";
+const img4 = "/assets/generated/carousel-homehelp.dim_800x500.jpg";
+
+const images = [img1, img2, img3, img4];
+
+const labels = [
+  "Task Delivery",
+  "Grocery Pickup",
+  "Courier Delivery",
+  "Home Help",
 ];
 
-const AUTOPLAY_INTERVAL = 1800;
-
 export function HeroCarousel() {
-  const [index, setIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const goTo = (next: number, dir: number) => {
-    setDirection(dir);
-    setIndex(next);
-  };
-
-  const advance = useCallback(() => {
-    setDirection(1);
-    setIndex((i) => (i + 1) % SLIDES.length);
-  }, []);
-
+  // Auto-advance every 1.8 seconds, clear on unmount
   useEffect(() => {
     if (paused) return;
-    intervalRef.current = setInterval(advance, AUTOPLAY_INTERVAL);
+    intervalRef.current = setInterval(() => {
+      setDirection(1);
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 1800);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [paused, advance]);
+  }, [paused]);
 
-  const handleDragEnd = (_: never, info: { offset: { x: number } }) => {
-    if (info.offset.x < -40) {
-      goTo((index + 1) % SLIDES.length, 1);
-    } else if (info.offset.x > 40) {
-      goTo((index - 1 + SLIDES.length) % SLIDES.length, -1);
-    }
+  const goTo = (i: number) => {
+    setDirection(i > currentIndex ? 1 : -1);
+    setCurrentIndex(i);
   };
 
   return (
@@ -61,60 +45,60 @@ export function HeroCarousel() {
       onMouseLeave={() => setPaused(false)}
     >
       <AnimatePresence initial={false} custom={direction}>
-        <motion.div
-          key={index}
-          custom={direction}
-          variants={{
-            enter: (d: number) => ({ opacity: 0, x: d * 30 }),
-            center: { opacity: 1, x: 0 },
-            exit: (d: number) => ({ opacity: 0, x: d * -30 }),
-          }}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.55, ease: "easeInOut" }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.15}
-          onDragEnd={handleDragEnd}
-          className="absolute inset-0 cursor-grab active:cursor-grabbing"
-        >
-          <img
-            src={SLIDES[index].src}
-            alt={SLIDES[index].label}
-            className="w-full h-full object-cover pointer-events-none"
-            draggable={false}
-          />
+        {images.map((src, i) =>
+          i === currentIndex ? (
+            <motion.div
+              key={src}
+              custom={direction}
+              variants={{
+                enter: (d: number) => ({ opacity: 0, x: d * 40 }),
+                center: { opacity: 1, x: 0 },
+                exit: (d: number) => ({ opacity: 0, x: d * -40 }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              className="absolute inset-0"
+            >
+              {/* Full-width image */}
+              <img
+                src={src}
+                alt={labels[i]}
+                className="w-full h-full object-cover"
+                draggable={false}
+              />
 
-          {/* Glossy overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+              {/* Glossy overlays */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
 
-          {/* Label pill */}
-          <div className="absolute bottom-10 left-4">
-            <span className="bg-black/50 backdrop-blur border border-white/10 text-white text-xs rounded-full px-3 py-1">
-              {SLIDES[index].label}
-            </span>
-          </div>
-        </motion.div>
+              {/* Label */}
+              <div className="absolute bottom-10 left-4">
+                <span className="bg-black/50 backdrop-blur border border-white/10 text-white text-xs rounded-full px-3 py-1">
+                  {labels[i]}
+                </span>
+              </div>
+            </motion.div>
+          ) : null,
+        )}
       </AnimatePresence>
 
       {/* Dot indicators */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
-        {SLIDES.map((slide, i) => (
+        {images.map((src, i) => (
           <button
-            key={slide.label}
+            key={src}
             type="button"
-            onClick={() => goTo(i, i > index ? 1 : -1)}
+            onClick={() => goTo(i)}
             className="rounded-full transition-all duration-300"
             style={{
-              width: i === index ? 20 : 6,
+              width: i === currentIndex ? 20 : 6,
               height: 6,
               backgroundColor:
-                i === index ? "#00E676" : "rgba(255,255,255,0.3)",
+                i === currentIndex ? "#00E676" : "rgba(255,255,255,0.3)",
             }}
-            data-ocid="hero.toggle"
-            aria-label={slide.label}
+            aria-label={labels[i]}
           />
         ))}
       </div>

@@ -14,6 +14,7 @@ import { TaskTimeline } from "./components/TaskTimeline";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { Dashboard } from "./pages/Dashboard";
 import { LoginPage } from "./pages/LoginPage";
+import MyProfile from "./pages/MyProfile";
 
 const GREEN = "#00E676";
 
@@ -67,6 +68,10 @@ export default function App() {
   // Authenticated + #dashboard → show dashboard
   if (hash === "#dashboard") {
     return <Dashboard />;
+  }
+
+  if (hash === "#profile") {
+    return <MyProfile />;
   }
 
   // Authenticated → landing page with nav showing "Go to Dashboard"

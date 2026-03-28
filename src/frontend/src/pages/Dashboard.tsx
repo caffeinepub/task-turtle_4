@@ -1067,6 +1067,10 @@ export function Dashboard() {
                     background: item.active ? GREEN : "transparent",
                     color: item.active ? "#050505" : "rgba(255,255,255,0.5)",
                   }}
+                  onClick={() => {
+                    if (item.label === "Profile")
+                      window.location.hash = "#profile";
+                  }}
                   data-ocid={`dashboard.${item.label.toLowerCase()}.tab`}
                 >
                   {item.label}

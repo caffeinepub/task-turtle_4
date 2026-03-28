@@ -31,7 +31,14 @@ export const UserRole = IDL.Variant({
   'guest' : IDL.Null,
 });
 export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
-export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const UserProfile = IDL.Record({
+  'studentId' : IDL.Opt(IDL.Text),
+  'name' : IDL.Text,
+  'aadharNumber' : IDL.Opt(IDL.Text),
+  'upiId' : IDL.Text,
+  'phone' : IDL.Text,
+  'location' : IDL.Text,
+});
 export const PaymentStatus = IDL.Variant({
   'PAID' : IDL.Null,
   'COMPLETED' : IDL.Null,
@@ -152,7 +159,14 @@ export const idlFactory = ({ IDL }) => {
     'guest' : IDL.Null,
   });
   const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
-  const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const UserProfile = IDL.Record({
+    'studentId' : IDL.Opt(IDL.Text),
+    'name' : IDL.Text,
+    'aadharNumber' : IDL.Opt(IDL.Text),
+    'upiId' : IDL.Text,
+    'phone' : IDL.Text,
+    'location' : IDL.Text,
+  });
   const PaymentStatus = IDL.Variant({
     'PAID' : IDL.Null,
     'COMPLETED' : IDL.Null,

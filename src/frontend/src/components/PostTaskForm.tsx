@@ -9,7 +9,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useActor } from "../hooks/useActor";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
 
@@ -66,7 +66,12 @@ function makeBlur(hasError: boolean) {
 }
 
 export default function PostTaskForm() {
-  const { actor } = useActor();
+  const { actor, isFetching: actorLoading } = useActor();
+  const actorRef = useRef(actor);
+  useEffect(() => {
+    actorRef.current = actor;
+  }, [actor]);
+
   const [fields, setFields] = useState<FormFields>({
     category: "",
     storeLocation: "",
@@ -113,8 +118,11 @@ export default function PostTaskForm() {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    if (!actor) {
-      setSubmitError("Not connected to backend. Please refresh and try again.");
+    const currentActor = actorRef.current;
+    if (!currentActor) {
+      setSubmitError(
+        "Backend not connected. Please wait a moment and try again.",
+      );
       return;
     }
 
@@ -126,7 +134,7 @@ export default function PostTaskForm() {
       const title = `${fields.category} at ${fields.storeLocation}`;
       const description = `Contact: ${fields.contactNumber}`;
 
-      const id = await actor.createTask(
+      const id = await currentActor.createTask(
         title,
         description,
         fields.category,
@@ -242,6 +250,9 @@ export default function PostTaskForm() {
       </div>
     );
   }
+
+  const isConnecting = actorLoading && !actor;
+  const submitDisabled = isLoading || isConnecting;
 
   return (
     <div
@@ -675,20 +686,26 @@ export default function PostTaskForm() {
             <motion.button
               type="submit"
               data-ocid="posttask.submit_button"
-              disabled={isLoading}
-              whileHover={isLoading ? {} : { scale: 1.015 }}
-              whileTap={isLoading ? {} : { scale: 0.97 }}
+              disabled={submitDisabled}
+              whileHover={submitDisabled ? {} : { scale: 1.015 }}
+              whileTap={submitDisabled ? {} : { scale: 0.97 }}
               className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 mt-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               style={{
                 background: "#00E676",
                 color: "#050505",
-                boxShadow: isLoading
+                boxShadow: submitDisabled
                   ? "none"
                   : "0 4px 20px rgba(0,230,118,0.3)",
               }}
             >
-              {isLoading && <Loader2 size={16} className="animate-spin" />}
-              {isLoading ? "Posting..." : "Post Task"}
+              {(isLoading || isConnecting) && (
+                <Loader2 size={16} className="animate-spin" />
+              )}
+              {isConnecting
+                ? "Connecting..."
+                : isLoading
+                  ? "Posting..."
+                  : "Post Task"}
             </motion.button>
           </form>
         </div>

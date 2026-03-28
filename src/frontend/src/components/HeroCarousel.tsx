@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const SLIDES = [
   {
+    src: "/assets/generated/carousel-banner.dim_800x500.jpg",
+    label: "Task Delivery",
+  },
+  {
     src: "/assets/generated/carousel-grocery.dim_800x500.jpg",
     label: "Grocery Pickup",
   },

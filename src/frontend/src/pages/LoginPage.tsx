@@ -8,12 +8,21 @@ const AMBER = "#F59E0B";
 export function LoginPage() {
   const { login, isLoggingIn } = useInternetIdentity();
 
+  function loginAsUser() {
+    localStorage.removeItem("loginIntent");
+    login();
+  }
+
+  function loginAsAdmin() {
+    localStorage.setItem("loginIntent", "admin");
+    login();
+  }
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4"
       style={{ backgroundColor: "#050505" }}
     >
-      {/* Ambient glows */}
       <div
         className="fixed top-0 left-0 w-[500px] h-[500px] pointer-events-none"
         style={{
@@ -89,7 +98,7 @@ export function LoginPage() {
             <motion.button
               type="button"
               data-ocid="login.primary_button"
-              onClick={login}
+              onClick={loginAsUser}
               disabled={isLoggingIn}
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.97 }}
@@ -126,7 +135,7 @@ export function LoginPage() {
             <motion.button
               type="button"
               data-ocid="login.secondary_button"
-              onClick={login}
+              onClick={loginAsAdmin}
               disabled={isLoggingIn}
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.97 }}
@@ -170,7 +179,6 @@ export function LoginPage() {
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-center gap-2 mt-6">
           <ShieldCheck size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>

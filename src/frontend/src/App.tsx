@@ -12,6 +12,7 @@ import { OTPVerification } from "./components/OTPVerification";
 import { PaymentDemo } from "./components/PaymentDemo";
 import { TaskTimeline } from "./components/TaskTimeline";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { AdminPage } from "./pages/AdminPage";
 import { BlogPage } from "./pages/BlogPage";
 import { Dashboard } from "./pages/Dashboard";
 import { FeaturesPage } from "./pages/FeaturesPage";
@@ -38,6 +39,16 @@ export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const hash = useHashRoute();
   const isAuthenticated = !!identity;
+
+  // After login, redirect to admin if that was the intent
+  useEffect(() => {
+    if (isAuthenticated && !isInitializing) {
+      const intent = localStorage.getItem("loginIntent");
+      if (intent === "admin" && hash !== "#admin") {
+        window.location.hash = "#admin";
+      }
+    }
+  }, [isAuthenticated, isInitializing, hash]);
 
   const [showOTP, setShowOTP] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -70,6 +81,7 @@ export default function App() {
   }
 
   // Separate pages via hash routing
+  if (hash === "#admin") return <AdminPage />;
   if (hash === "#dashboard") return <Dashboard />;
   if (hash === "#profile") return <MyProfile />;
   if (hash === "#tasker") return <TaskerPage />;
@@ -277,26 +289,6 @@ export default function App() {
           </section>
 
           <PaymentDemo />
-
-          <section className="py-20 px-4" data-ocid="admin.section">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-12">
-                <p
-                  className="text-xs font-semibold tracking-widest uppercase mb-3"
-                  style={{ color: GREEN }}
-                >
-                  Admin
-                </p>
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                  Payout management
-                </h2>
-                <p className="text-white/50 text-base max-w-md mx-auto">
-                  Admin manually sends UPI payouts and marks tasks as completed.
-                </p>
-              </div>
-              <AdminDashboard />
-            </div>
-          </section>
         </main>
         <Footer />
       </div>

@@ -10,7 +10,61 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE {}
+export interface EscrowPayment {
+  'status' : PaymentStatus,
+  'taskerUpiId' : string,
+  'userId' : string,
+  'taskId' : string,
+  'razorpayOrderId' : string,
+  'paymentId' : string,
+  'amount' : bigint,
+}
+export type PaymentStatus = { 'PAID' : null } |
+  { 'COMPLETED' : null } |
+  { 'FAILED' : null };
+export type Result = { 'ok' : null } |
+  { 'err' : string };
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
+export interface UserProfile { 'name' : string }
+export type UserRole = { 'admin' : null } |
+  { 'user' : null } |
+  { 'guest' : null };
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
+export interface _SERVICE {
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  /**
+   * / `maybeCaller` is a default system function that can be used to fetch the caller if available.
+   * / In the first update call after each upgrade, the caller is not defined.
+   */
+  'createRazorpayOrder' : ActorMethod<[bigint, string, string, string], Result>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getPaymentByTask' : ActorMethod<[string], [] | [EscrowPayment]>,
+  'getPayments' : ActorMethod<[], Array<EscrowPayment>>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'isCallerAdmin' : ActorMethod<[], boolean>,
+  'markPayoutComplete' : ActorMethod<[string], Result>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'verifyPayment' : ActorMethod<
+    [string, string, string, string, bigint, string, string],
+    Result
+  >,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;

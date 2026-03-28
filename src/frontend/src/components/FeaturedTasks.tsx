@@ -1,5 +1,6 @@
-import { ArrowRight, MapPin, Star } from "lucide-react";
-import { motion } from "motion/react";
+import { ArrowRight, MapPin, Star, Zap } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
 
 const TASKS = [
   {
@@ -46,7 +47,13 @@ const TASKS = [
   },
 ];
 
+function parsePriceNumber(price: string): number {
+  return Number(price.replace(/[^0-9.]/g, ""));
+}
+
 export function FeaturedTasks() {
+  const surgeActive = isSurgeActive();
+
   return (
     <section id="tasks" className="py-24 relative">
       <div className="max-w-[1200px] mx-auto px-6">
@@ -72,95 +79,157 @@ export function FeaturedTasks() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {TASKS.map((task, i) => (
+        {/* Surge notice banner */}
+        <AnimatePresence>
+          {surgeActive && (
             <motion.div
-              key={task.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="group rounded-2xl border overflow-hidden hover:shadow-[0_0_40px_rgba(0,230,118,0.12)] transition-all duration-300"
-              style={{
-                background: "rgba(14,18,20,0.6)",
-                borderColor: "rgba(255,255,255,0.09)",
-              }}
-              data-ocid={`tasks.item.${i + 1}`}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35 }}
+              className="flex justify-center mb-8"
             >
-              <div className="relative h-44 overflow-hidden">
-                <img
-                  src={task.image}
-                  alt={task.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div
-                  className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold"
-                  style={{ backgroundColor: "#00E676", color: "#050505" }}
-                >
-                  {task.price}
-                </div>
-              </div>
-
-              <div className="p-4">
-                <h3 className="text-white font-semibold text-sm mb-1.5">
-                  {task.title}
-                </h3>
-                <p className="text-[#A7ADB3] text-xs leading-relaxed mb-4">
-                  {task.description}
-                </p>
-
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-1">
-                    <MapPin size={11} className="text-[#A7ADB3]" />
-                    <span className="text-xs text-[#A7ADB3]">
-                      {task.location}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star
-                      size={11}
-                      style={{ color: "#00E676", fill: "#00E676" }}
-                    />
-                    <span className="text-xs text-[#A7ADB3]">
-                      {task.rating}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className="flex items-center justify-between pt-3 border-t"
-                  style={{ borderColor: "rgba(255,255,255,0.08)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{
-                        backgroundColor: "rgba(0,230,118,0.15)",
-                        color: "#00E676",
-                      }}
-                    >
-                      {task.initials}
-                    </div>
-                    <div>
-                      <p className="text-white text-xs font-medium">
-                        {task.helper}
-                      </p>
-                      <p className="text-[#A7ADB3] text-[10px]">Local Helper</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:shadow-[0_0_15px_rgba(0,230,118,0.3)] active:scale-95"
-                    style={{ backgroundColor: "#00E676", color: "#050505" }}
-                    data-ocid={`tasks.button.${i + 1}`}
-                  >
-                    View
-                    <ArrowRight size={11} />
-                  </button>
-                </div>
-              </div>
+              <span
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold"
+                style={{
+                  background: "rgba(255,160,0,0.12)",
+                  color: "#FFA000",
+                  border: "1px solid rgba(255,160,0,0.35)",
+                }}
+                data-ocid="tasks.toggle"
+              >
+                <Zap size={11} fill="#FFA000" />
+                Surge pricing active · 11 PM – 5 AM
+              </span>
             </motion.div>
-          ))}
+          )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {TASKS.map((task, i) => {
+            const baseNum = parsePriceNumber(task.price);
+            const surgedNum = getSurgePrice(baseNum);
+            const currencySymbol = task.price.replace(/[0-9.]/g, "").trim();
+
+            return (
+              <motion.div
+                key={task.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="group rounded-2xl border overflow-hidden hover:shadow-[0_0_40px_rgba(0,230,118,0.12)] transition-all duration-300"
+                style={{
+                  background: "rgba(14,18,20,0.6)",
+                  borderColor: surgeActive
+                    ? "rgba(255,160,0,0.18)"
+                    : "rgba(255,255,255,0.09)",
+                }}
+                data-ocid={`tasks.item.${i + 1}`}
+              >
+                <div className="relative h-44 overflow-hidden">
+                  <img
+                    src={task.image}
+                    alt={task.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* Price badge */}
+                  <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                    {surgeActive ? (
+                      <>
+                        {/* Surged price */}
+                        <span
+                          className="px-2.5 py-1 rounded-full text-xs font-bold"
+                          style={{
+                            backgroundColor: "#FFA000",
+                            color: "#050505",
+                          }}
+                        >
+                          {currencySymbol}
+                          {surgedNum}
+                        </span>
+                        {/* Original price strikethrough */}
+                        <span
+                          className="text-[10px] line-through"
+                          style={{ color: "rgba(255,255,255,0.45)" }}
+                        >
+                          {task.price}
+                        </span>
+                      </>
+                    ) : (
+                      <span
+                        className="px-2.5 py-1 rounded-full text-xs font-bold"
+                        style={{ backgroundColor: "#00E676", color: "#050505" }}
+                      >
+                        {task.price}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <h3 className="text-white font-semibold text-sm mb-1.5">
+                    {task.title}
+                  </h3>
+                  <p className="text-[#A7ADB3] text-xs leading-relaxed mb-4">
+                    {task.description}
+                  </p>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-1">
+                      <MapPin size={11} className="text-[#A7ADB3]" />
+                      <span className="text-xs text-[#A7ADB3]">
+                        {task.location}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star
+                        size={11}
+                        style={{ color: "#00E676", fill: "#00E676" }}
+                      />
+                      <span className="text-xs text-[#A7ADB3]">
+                        {task.rating}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="flex items-center justify-between pt-3 border-t"
+                    style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{
+                          backgroundColor: "rgba(0,230,118,0.15)",
+                          color: "#00E676",
+                        }}
+                      >
+                        {task.initials}
+                      </div>
+                      <div>
+                        <p className="text-white text-xs font-medium">
+                          {task.helper}
+                        </p>
+                        <p className="text-[#A7ADB3] text-[10px]">
+                          Local Helper
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:shadow-[0_0_15px_rgba(0,230,118,0.3)] active:scale-95"
+                      style={{ backgroundColor: "#00E676", color: "#050505" }}
+                      data-ocid={`tasks.button.${i + 1}`}
+                    >
+                      View
+                      <ArrowRight size={11} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
 
         <motion.div

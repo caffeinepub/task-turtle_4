@@ -1,17 +1,35 @@
+import { ShieldCheck } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
+import { AdminDashboard } from "./components/AdminDashboard";
 import { FeaturedTasks } from "./components/FeaturedTasks";
 import { Footer } from "./components/Footer";
 import { Hero } from "./components/Hero";
 import { HowItWorks } from "./components/HowItWorks";
+import { LiveMap } from "./components/LiveMap";
 import { Navbar } from "./components/Navbar";
+import { OTPVerification } from "./components/OTPVerification";
+import { PaymentDemo } from "./components/PaymentDemo";
+import { TaskTimeline } from "./components/TaskTimeline";
+
+const GREEN = "#00E676";
 
 export default function App() {
+  const [showOTP, setShowOTP] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  function handleVerified() {
+    setShowOTP(false);
+    setVerified(true);
+    setTimeout(() => setVerified(false), 3500);
+  }
+
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"
       style={{ backgroundColor: "#050505" }}
     >
       {/* Ambient background glows */}
-      {/* Top-left glow */}
       <div
         className="fixed top-0 left-0 w-[600px] h-[600px] pointer-events-none"
         style={{
@@ -20,7 +38,6 @@ export default function App() {
           zIndex: 0,
         }}
       />
-      {/* Bottom-right glow */}
       <div
         className="fixed bottom-0 right-0 w-[600px] h-[600px] pointer-events-none"
         style={{
@@ -30,13 +47,212 @@ export default function App() {
         }}
       />
 
+      {/* OTP overlay */}
+      <AnimatePresence>
+        {showOTP && (
+          <motion.div
+            key="otp-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 32, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-md"
+            >
+              <OTPVerification
+                taskId="demo-task-001"
+                taskTitle="Grocery Pickup \u2013 Bandra"
+                onVerified={handleVerified}
+                onCancel={() => setShowOTP(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Content */}
       <div className="relative" style={{ zIndex: 1 }}>
         <Navbar />
         <main>
           <Hero />
           <HowItWorks />
+          <LiveMap />
           <FeaturedTasks />
+
+          {/* Task Timeline Demo Section */}
+          <section className="py-20 px-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-12">
+                <p
+                  className="text-xs font-semibold tracking-widest uppercase mb-3"
+                  style={{ color: GREEN }}
+                >
+                  Live Tracking
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Always know where your task is
+                </h2>
+                <p className="text-white/50 text-base max-w-md mx-auto">
+                  Real-time stage updates from the moment your task is posted to
+                  final verification.
+                </p>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-6 justify-center items-start">
+                <div className="w-full max-w-sm mx-auto">
+                  <p className="text-white/30 text-xs text-center mb-3 uppercase tracking-widest">
+                    Just started
+                  </p>
+                  <TaskTimeline currentStage={1} />
+                </div>
+                <div className="w-full max-w-sm mx-auto">
+                  <p
+                    className="text-xs text-center mb-3 uppercase tracking-widest font-semibold"
+                    style={{ color: GREEN }}
+                  >
+                    In progress
+                  </p>
+                  <TaskTimeline currentStage={3} />
+                </div>
+                <div className="w-full max-w-sm mx-auto">
+                  <p className="text-white/30 text-xs text-center mb-3 uppercase tracking-widest">
+                    Completed
+                  </p>
+                  <TaskTimeline currentStage={5} />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* OTP Verification Demo Section */}
+          <section className="py-20 px-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-12">
+                <p
+                  className="text-xs font-semibold tracking-widest uppercase mb-3"
+                  style={{ color: GREEN }}
+                >
+                  Secure Handoff
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  OTP-verified task completion
+                </h2>
+                <p className="text-white/50 text-base max-w-md mx-auto">
+                  Every delivery is confirmed with a one-time code \u2014 so
+                  only you can mark a task as done.
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <div
+                  className="relative w-full max-w-sm rounded-2xl p-8 text-center"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                  data-ocid="otp.card"
+                >
+                  <div
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                    style={{
+                      background: `${GREEN}18`,
+                      border: `1px solid ${GREEN}35`,
+                      boxShadow: `0 0 24px ${GREEN}25`,
+                    }}
+                  >
+                    <ShieldCheck size={28} style={{ color: GREEN }} />
+                  </div>
+
+                  <h3 className="text-white font-bold text-xl mb-2">
+                    Grocery Pickup \u2013 Bandra
+                  </h3>
+                  <p className="text-white/40 text-sm mb-1">
+                    Task ID: demo-task-001
+                  </p>
+                  <p className="text-white/30 text-xs mb-8">
+                    Tap below to simulate the delivery verification flow
+                  </p>
+
+                  <AnimatePresence>
+                    {verified && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="mb-5 px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                        style={{
+                          background: `${GREEN}18`,
+                          border: `1px solid ${GREEN}50`,
+                          color: GREEN,
+                        }}
+                        data-ocid="otp.success_state"
+                      >
+                        <ShieldCheck size={16} />
+                        Task verified successfully!
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <button
+                    type="button"
+                    className="w-full h-12 rounded-xl font-semibold text-sm transition-all duration-200"
+                    style={{
+                      background: GREEN,
+                      color: "#000",
+                      boxShadow: "0 0 20px rgba(0,230,118,0.35)",
+                    }}
+                    onClick={() => {
+                      setVerified(false);
+                      setShowOTP(true);
+                    }}
+                    data-ocid="otp.open_modal_button"
+                  >
+                    Verify Task
+                  </button>
+
+                  <p className="text-white/20 text-xs mt-4">
+                    A 6-digit OTP will be generated for this task
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Payment & Escrow Demo Section */}
+          <PaymentDemo />
+
+          {/* Admin Dashboard Section */}
+          <section className="py-20 px-4" data-ocid="admin.section">
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-12">
+                <p
+                  className="text-xs font-semibold tracking-widest uppercase mb-3"
+                  style={{ color: GREEN }}
+                >
+                  Admin
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Payout management
+                </h2>
+                <p className="text-white/50 text-base max-w-md mx-auto">
+                  Admin manually sends UPI payouts and marks tasks as completed.
+                </p>
+              </div>
+              <AdminDashboard />
+            </div>
+          </section>
         </main>
         <Footer />
       </div>

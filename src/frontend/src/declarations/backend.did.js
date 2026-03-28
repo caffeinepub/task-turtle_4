@@ -8,10 +8,157 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const idlService = IDL.Service({});
+export const UserRole = IDL.Variant({
+  'admin' : IDL.Null,
+  'user' : IDL.Null,
+  'guest' : IDL.Null,
+});
+export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const PaymentStatus = IDL.Variant({
+  'PAID' : IDL.Null,
+  'COMPLETED' : IDL.Null,
+  'FAILED' : IDL.Null,
+});
+export const EscrowPayment = IDL.Record({
+  'status' : PaymentStatus,
+  'taskerUpiId' : IDL.Text,
+  'userId' : IDL.Text,
+  'taskId' : IDL.Text,
+  'razorpayOrderId' : IDL.Text,
+  'paymentId' : IDL.Text,
+  'amount' : IDL.Nat,
+});
+export const http_header = IDL.Record({
+  'value' : IDL.Text,
+  'name' : IDL.Text,
+});
+export const http_request_result = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+export const TransformationInput = IDL.Record({
+  'context' : IDL.Vec(IDL.Nat8),
+  'response' : http_request_result,
+});
+export const TransformationOutput = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+
+export const idlService = IDL.Service({
+  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createRazorpayOrder' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+      [Result],
+      [],
+    ),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getPaymentByTask' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(EscrowPayment)],
+      ['query'],
+    ),
+  'getPayments' : IDL.Func([], [IDL.Vec(EscrowPayment)], ['query']),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
+  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'markPayoutComplete' : IDL.Func([IDL.Text], [Result], []),
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'transform' : IDL.Func(
+      [TransformationInput],
+      [TransformationOutput],
+      ['query'],
+    ),
+  'verifyPayment' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, IDL.Text, IDL.Text],
+      [Result],
+      [],
+    ),
+});
 
 export const idlInitArgs = [];
 
-export const idlFactory = ({ IDL }) => { return IDL.Service({}); };
+export const idlFactory = ({ IDL }) => {
+  const UserRole = IDL.Variant({
+    'admin' : IDL.Null,
+    'user' : IDL.Null,
+    'guest' : IDL.Null,
+  });
+  const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const PaymentStatus = IDL.Variant({
+    'PAID' : IDL.Null,
+    'COMPLETED' : IDL.Null,
+    'FAILED' : IDL.Null,
+  });
+  const EscrowPayment = IDL.Record({
+    'status' : PaymentStatus,
+    'taskerUpiId' : IDL.Text,
+    'userId' : IDL.Text,
+    'taskId' : IDL.Text,
+    'razorpayOrderId' : IDL.Text,
+    'paymentId' : IDL.Text,
+    'amount' : IDL.Nat,
+  });
+  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const http_request_result = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  const TransformationInput = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : http_request_result,
+  });
+  const TransformationOutput = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  
+  return IDL.Service({
+    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createRazorpayOrder' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
+        [Result],
+        [],
+      ),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getPaymentByTask' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(EscrowPayment)],
+        ['query'],
+      ),
+    'getPayments' : IDL.Func([], [IDL.Vec(EscrowPayment)], ['query']),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
+    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'markPayoutComplete' : IDL.Func([IDL.Text], [Result], []),
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'transform' : IDL.Func(
+        [TransformationInput],
+        [TransformationOutput],
+        ['query'],
+      ),
+    'verifyPayment' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, IDL.Text, IDL.Text],
+        [Result],
+        [],
+      ),
+  });
+};
 
 export const init = ({ IDL }) => { return []; };

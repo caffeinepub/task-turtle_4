@@ -1,9 +1,14 @@
 import {
+  Ban,
   CheckCircle,
   ClipboardCopy,
   DollarSign,
   ListChecks,
   Loader2,
+  RefreshCw,
+  Search,
+  ShieldOff,
+  Trash2,
   Users,
   XCircle,
 } from "lucide-react";
@@ -16,12 +21,50 @@ import { useActor } from "../hooks/useActor";
 const G = "#00E676";
 const CARD = "rgba(255,255,255,0.04)";
 const BORDER = "1px solid rgba(255,255,255,0.08)";
+const SEARCH_STYLE: React.CSSProperties = {
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  color: "#fff",
+  borderRadius: 10,
+  padding: "8px 12px 8px 36px",
+  fontSize: 13,
+  outline: "none",
+  width: "100%",
+};
 
 type Tab = "overview" | "tasks" | "users" | "taskers" | "payments" | "payouts";
 
 function truncate(s: string, n = 10) {
   if (!s) return "—";
   return s.length > n ? `${s.slice(0, n)}…` : s;
+}
+
+function SearchBar({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative" style={{ maxWidth: 320 }}>
+      <Search
+        size={14}
+        className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+        style={{ color: "rgba(255,255,255,0.3)" }}
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? "Search…"}
+        style={SEARCH_STYLE}
+        data-ocid="admin.search_input"
+      />
+    </div>
+  );
 }
 
 function CopyBtn({ text }: { text: string }) {
@@ -135,7 +178,6 @@ function OverviewTab({
 
   return (
     <div className="space-y-6">
-      {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((s) => (
           <motion.div
@@ -159,7 +201,6 @@ function OverviewTab({
         ))}
       </div>
 
-      {/* Secondary stats */}
       <div className="grid grid-cols-2 gap-4">
         <div
           className="rounded-2xl p-4"
@@ -181,7 +222,6 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Status breakdown */}
       <div
         className="rounded-2xl p-5"
         style={{ background: CARD, border: BORDER }}
@@ -218,7 +258,6 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Recent Activity */}
       <div
         className="rounded-2xl p-5"
         style={{ background: CARD, border: BORDER }}
@@ -281,174 +320,374 @@ function OverviewTab({
 }
 
 // ─────────────────── All Tasks ───────────────────
-function AllTasksTab({ tasks }: { tasks: PublicTask[] }) {
+function AllTasksTab({
+  tasks,
+  payments,
+  blockedUsers,
+  onBlockUser,
+  onCancelTask,
+}: {
+  tasks: PublicTask[];
+  payments: EscrowPayment[];
+  blockedUsers: Set<string>;
+  onBlockUser: (principal: string) => void;
+  onCancelTask: (taskId: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  const filtered = search
+    ? tasks.filter((t) => t.id.toLowerCase().includes(search.toLowerCase()))
+    : tasks;
+
+  function handleCancel(taskId: string) {
+    setCancelling(taskId);
+    onCancelTask(taskId);
+    setCancelling(null);
+  }
+
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: CARD, border: BORDER }}
-    >
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr
-              className="text-white/30 text-xs border-b"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              {[
-                "ID",
-                "Title",
-                "Category",
-                "Location",
-                "Amount",
-                "Status",
-                "Posted By",
-                "Accepted By",
-                "Date",
-              ].map((h) => (
-                <th key={h} className="text-left px-4 py-3 font-normal">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {tasks.map((t, i) => (
+    <div className="space-y-4">
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search by Task ID…"
+      />
+
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: CARD, border: BORDER }}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
               <tr
-                key={t.id}
-                className="hover:bg-white/[0.02] transition-colors"
-                data-ocid={`tasks.item.${i + 1}`}
+                className="text-white/30 text-xs border-b"
+                style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
-                <td className="px-4 py-3 font-mono text-white/50 text-xs">
-                  {t.id.slice(-6)}
-                </td>
-                <td className="px-4 py-3">
-                  <p className="text-white font-medium">
-                    {truncate(t.title, 24)}
-                  </p>
-                  <p className="text-white/30 text-xs">
-                    {truncate(t.description, 30)}
-                  </p>
-                </td>
-                <td className="px-4 py-3 text-white/60">{t.category}</td>
-                <td className="px-4 py-3 text-white/60">
-                  {truncate(t.location, 16)}
-                </td>
-                <td className="px-4 py-3 text-white">{formatINR(t.amount)}</td>
-                <td className="px-4 py-3">
-                  <StatusBadge status={t.status} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-mono text-white/40 text-xs">
-                    {truncate(t.poster.toString(), 12)}
-                  </span>
-                  <CopyBtn text={t.poster.toString()} />
-                </td>
-                <td className="px-4 py-3">
-                  {t.acceptor ? (
-                    <>
-                      <span className="font-mono text-white/40 text-xs">
-                        {truncate(t.acceptor.toString(), 12)}
-                      </span>
-                      <CopyBtn text={t.acceptor.toString()} />
-                    </>
-                  ) : (
-                    <span className="text-white/20">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-white/30 text-xs">
-                  {formatDate(t.createdAt)}
-                </td>
+                {[
+                  "ID",
+                  "Title",
+                  "Category",
+                  "Location",
+                  "Amount",
+                  "Status",
+                  "Posted By",
+                  "Accepted By",
+                  "Tasker UPI",
+                  "Date",
+                  "Actions",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left px-4 py-3 font-normal whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-            {tasks.length === 0 && (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="py-12 text-center text-white/20"
-                  data-ocid="tasks.empty_state"
-                >
-                  No tasks found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {filtered.map((t, i) => {
+                const payment = payments.find((p) => p.taskId === t.id);
+                const upiId = payment?.taskerUpiId || "—";
+                const posterPrincipal = t.poster.toString();
+                const isBlocked = blockedUsers.has(posterPrincipal);
+
+                return (
+                  <tr
+                    key={t.id}
+                    className="hover:bg-white/[0.02] transition-colors"
+                    data-ocid={`tasks.item.${i + 1}`}
+                  >
+                    <td className="px-4 py-3 font-mono text-white/50 text-xs">
+                      {t.id.slice(-6)}
+                      <CopyBtn text={t.id} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-white font-medium">
+                        {truncate(t.title, 24)}
+                      </p>
+                      <p className="text-white/30 text-xs">
+                        {truncate(t.description, 30)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-white/60">{t.category}</td>
+                    <td className="px-4 py-3 text-white/60">
+                      {truncate(t.location, 16)}
+                    </td>
+                    <td className="px-4 py-3 text-white">
+                      {formatINR(t.amount)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={t.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <span className="font-mono text-white/40 text-xs">
+                          {truncate(posterPrincipal, 12)}
+                        </span>
+                        <CopyBtn text={posterPrincipal} />
+                        {isBlocked && (
+                          <span
+                            className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: "rgba(239,68,68,0.2)",
+                              color: "#F87171",
+                            }}
+                          >
+                            BLOCKED
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {t.acceptor ? (
+                        <>
+                          <span className="font-mono text-white/40 text-xs">
+                            {truncate(t.acceptor.toString(), 12)}
+                          </span>
+                          <CopyBtn text={t.acceptor.toString()} />
+                        </>
+                      ) : (
+                        <span className="text-white/20">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-white/60 text-xs">{upiId}</span>
+                      {upiId !== "—" && <CopyBtn text={upiId} />}
+                    </td>
+                    <td className="px-4 py-3 text-white/30 text-xs">
+                      {formatDate(t.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {t.status !== TaskStatus.completed && (
+                          <button
+                            type="button"
+                            disabled={cancelling === t.id}
+                            onClick={() => handleCancel(t.id)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                            style={{
+                              background: "rgba(239,68,68,0.15)",
+                              color: "#F87171",
+                              border: "1px solid rgba(239,68,68,0.3)",
+                            }}
+                            title="Cancel task"
+                            data-ocid={`tasks.delete_button.${i + 1}`}
+                          >
+                            {cancelling === t.id ? (
+                              <Loader2 size={11} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={11} />
+                            )}
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onBlockUser(posterPrincipal)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                          style={{
+                            background: isBlocked
+                              ? "rgba(239,68,68,0.2)"
+                              : "rgba(255,255,255,0.06)",
+                            color: isBlocked
+                              ? "#F87171"
+                              : "rgba(255,255,255,0.4)",
+                            border: isBlocked
+                              ? "1px solid rgba(239,68,68,0.4)"
+                              : "1px solid rgba(255,255,255,0.1)",
+                          }}
+                          title={isBlocked ? "Unblock user" : "Block user"}
+                          data-ocid={`tasks.toggle.${i + 1}`}
+                        >
+                          <Ban size={11} />
+                          {isBlocked ? "Unblock" : "Block"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={11}
+                    className="py-12 text-center text-white/20"
+                    data-ocid="tasks.empty_state"
+                  >
+                    {search ? "No tasks match your search" : "No tasks found"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
 
 // ─────────────────── Users ───────────────────
-function UsersTab({ tasks }: { tasks: PublicTask[] }) {
-  const users = Array.from(
-    tasks.reduce((map, t) => {
-      const key = t.poster.toString();
-      map.set(key, (map.get(key) ?? 0) + 1);
-      return map;
-    }, new Map<string, number>()),
-  );
+function UsersTab({
+  tasks,
+  blockedUsers,
+  onBlockUser,
+}: {
+  tasks: PublicTask[];
+  blockedUsers: Set<string>;
+  onBlockUser: (principal: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+
+  // Build user map: principal -> { taskCount, amountSpent }
+  const userMap = new Map<string, { taskCount: number; amountSpent: number }>();
+  for (const t of tasks) {
+    const key = t.poster.toString();
+    const prev = userMap.get(key) ?? { taskCount: 0, amountSpent: 0 };
+    userMap.set(key, {
+      taskCount: prev.taskCount + 1,
+      amountSpent: prev.amountSpent + Number(t.amount),
+    });
+  }
+
+  let users = Array.from(userMap.entries());
+
+  if (search) {
+    const q = search.toLowerCase();
+    users = users.filter(([principal]) => principal.toLowerCase().includes(q));
+  }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: CARD, border: BORDER }}
-    >
+    <div className="space-y-4">
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search by name or Principal ID…"
+      />
+
       <div
-        className="px-5 py-4 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        className="rounded-2xl overflow-hidden"
+        style={{ background: CARD, border: BORDER }}
       >
-        <p className="text-white font-semibold">{users.length} Users</p>
-        <p className="text-white/30 text-xs mt-0.5">
-          Profile details visible after user logs in
-        </p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr
-              className="text-white/30 text-xs border-b"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              <th className="text-left px-4 py-3 font-normal">#</th>
-              <th className="text-left px-4 py-3 font-normal">Principal ID</th>
-              <th className="text-left px-4 py-3 font-normal">Tasks Posted</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {users.map(([principal, count], i) => (
+        <div
+          className="px-5 py-3 border-b"
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          <p className="text-white font-semibold">{users.length} Users</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
               <tr
-                key={principal}
-                className="hover:bg-white/[0.02]"
-                data-ocid={`users.item.${i + 1}`}
+                className="text-white/30 text-xs border-b"
+                style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
-                <td className="px-4 py-3 text-white/20 text-xs">{i + 1}</td>
-                <td className="px-4 py-3">
-                  <span className="font-mono text-white/60 text-xs">
-                    {truncate(principal, 20)}
-                  </span>
-                  <CopyBtn text={principal} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-semibold" style={{ color: G }}>
-                    {count}
-                  </span>
-                  <span className="text-white/30 text-xs ml-1">tasks</span>
-                </td>
+                {[
+                  "#",
+                  "Name",
+                  "Phone No",
+                  "Location",
+                  "Principal ID",
+                  "Amount Spent",
+                  "Wallet Balance",
+                  "Tasks",
+                  "Actions",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left px-4 py-3 font-normal whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-            {users.length === 0 && (
-              <tr>
-                <td
-                  colSpan={3}
-                  className="py-12 text-center text-white/20"
-                  data-ocid="users.empty_state"
-                >
-                  No users yet
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {users.map(([principal, info], i) => {
+                const isBlocked = blockedUsers.has(principal);
+                return (
+                  <tr
+                    key={principal}
+                    className="hover:bg-white/[0.02]"
+                    data-ocid={`users.item.${i + 1}`}
+                  >
+                    <td className="px-4 py-3 text-white/20 text-xs">{i + 1}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/70 text-xs">—</span>
+                        {isBlocked && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: "rgba(239,68,68,0.2)",
+                              color: "#F87171",
+                            }}
+                          >
+                            BLOCKED
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-white/60 text-xs">
+                        {truncate(principal, 18)}
+                      </span>
+                      <CopyBtn text={principal} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-white">
+                        ₹{info.amountSpent.toLocaleString("en-IN")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold" style={{ color: G }}>
+                        {info.taskCount}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => onBlockUser(principal)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                        style={{
+                          background: isBlocked
+                            ? "rgba(239,68,68,0.2)"
+                            : "rgba(255,255,255,0.06)",
+                          color: isBlocked
+                            ? "#F87171"
+                            : "rgba(255,255,255,0.5)",
+                          border: isBlocked
+                            ? "1px solid rgba(239,68,68,0.4)"
+                            : "1px solid rgba(255,255,255,0.1)",
+                        }}
+                        data-ocid={`users.toggle.${i + 1}`}
+                      >
+                        <Ban size={12} />
+                        {isBlocked ? "Unblock" : "Block"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {users.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="py-12 text-center text-white/20"
+                    data-ocid="users.empty_state"
+                  >
+                    {search ? "No users match your search" : "No users yet"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -458,95 +697,203 @@ function UsersTab({ tasks }: { tasks: PublicTask[] }) {
 function TaskersTab({
   tasks,
   payments,
-}: { tasks: PublicTask[]; payments: EscrowPayment[] }) {
+}: {
+  tasks: PublicTask[];
+  payments: EscrowPayment[];
+}) {
+  const [search, setSearch] = useState("");
+  const [suspended, setSuspended] = useState<Set<string>>(new Set());
+
   const taskerMap = new Map<
     string,
-    { count: number; earned: number; upiId: string }
+    { completed: number; earned: number; upiId: string; isActive: boolean }
   >();
 
   for (const t of tasks.filter((t) => t.acceptor)) {
     const key = t.acceptor!.toString();
-    const prev = taskerMap.get(key) ?? { count: 0, earned: 0, upiId: "—" };
+    const prev = taskerMap.get(key) ?? {
+      completed: 0,
+      earned: 0,
+      upiId: "—",
+      isActive: false,
+    };
     let earned = prev.earned;
     let upiId = prev.upiId;
+    let completed = prev.completed;
+    let isActive = prev.isActive;
+
+    if (t.status === TaskStatus.accepted) isActive = true;
     if (t.status === TaskStatus.completed) {
+      completed += 1;
       earned += Number(t.amount) * 0.95;
       const pmt = payments.find((p) => p.taskId === t.id);
       if (pmt?.taskerUpiId) upiId = pmt.taskerUpiId;
     }
-    taskerMap.set(key, { count: prev.count + 1, earned, upiId });
+    taskerMap.set(key, { completed, earned, upiId, isActive });
   }
 
-  const taskers = Array.from(taskerMap.entries());
+  let taskers = Array.from(taskerMap.entries());
+
+  if (search) {
+    const q = search.toLowerCase();
+    taskers = taskers.filter(
+      ([principal, info]) =>
+        principal.toLowerCase().includes(q) ||
+        info.upiId.toLowerCase().includes(q),
+    );
+  }
+
+  function toggleSuspend(principal: string) {
+    setSuspended((prev) => {
+      const next = new Set(prev);
+      if (next.has(principal)) next.delete(principal);
+      else next.add(principal);
+      return next;
+    });
+  }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: CARD, border: BORDER }}
-    >
+    <div className="space-y-4">
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search by Principal ID or UPI ID…"
+      />
+
       <div
-        className="px-5 py-4 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        className="rounded-2xl overflow-hidden"
+        style={{ background: CARD, border: BORDER }}
       >
-        <p className="text-white font-semibold">{taskers.length} Taskers</p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr
-              className="text-white/30 text-xs border-b"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              <th className="text-left px-4 py-3 font-normal">#</th>
-              <th className="text-left px-4 py-3 font-normal">Principal ID</th>
-              <th className="text-left px-4 py-3 font-normal">
-                Tasks Completed
-              </th>
-              <th className="text-left px-4 py-3 font-normal">Total Earned</th>
-              <th className="text-left px-4 py-3 font-normal">UPI ID</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {taskers.map(([principal, info], i) => (
+        <div
+          className="px-5 py-3 border-b"
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          <p className="text-white font-semibold">{taskers.length} Taskers</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
               <tr
-                key={principal}
-                className="hover:bg-white/[0.02]"
-                data-ocid={`taskers.item.${i + 1}`}
+                className="text-white/30 text-xs border-b"
+                style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
-                <td className="px-4 py-3 text-white/20 text-xs">{i + 1}</td>
-                <td className="px-4 py-3">
-                  <span className="font-mono text-white/60 text-xs">
-                    {truncate(principal, 20)}
-                  </span>
-                  <CopyBtn text={principal} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-semibold" style={{ color: G }}>
-                    {info.count}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-white">
-                  ₹{Math.round(info.earned).toLocaleString("en-IN")}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-white/60 text-xs">{info.upiId}</span>
-                  {info.upiId !== "—" && <CopyBtn text={info.upiId} />}
-                </td>
+                {[
+                  "#",
+                  "Name",
+                  "Phone",
+                  "Location",
+                  "Active",
+                  "Principal ID",
+                  "Tasks Completed",
+                  "Total Earned",
+                  "UPI ID",
+                  "Actions",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left px-4 py-3 font-normal whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-            {taskers.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="py-12 text-center text-white/20"
-                  data-ocid="taskers.empty_state"
-                >
-                  No taskers yet
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {taskers.map(([principal, info], i) => {
+                const isSuspended = suspended.has(principal);
+                return (
+                  <tr
+                    key={principal}
+                    className="hover:bg-white/[0.02]"
+                    data-ocid={`taskers.item.${i + 1}`}
+                  >
+                    <td className="px-4 py-3 text-white/20 text-xs">{i + 1}</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full"
+                        style={{
+                          background: info.isActive
+                            ? G
+                            : "rgba(255,255,255,0.2)",
+                        }}
+                        title={info.isActive ? "Active" : "Inactive"}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <span className="font-mono text-white/60 text-xs">
+                          {truncate(principal, 16)}
+                        </span>
+                        <CopyBtn text={principal} />
+                        {isSuspended && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: "rgba(239,68,68,0.2)",
+                              color: "#F87171",
+                            }}
+                          >
+                            SUSPENDED
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold" style={{ color: G }}>
+                        {info.completed}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-white">
+                      ₹{Math.round(info.earned).toLocaleString("en-IN")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-white/60 text-xs">
+                        {info.upiId}
+                      </span>
+                      {info.upiId !== "—" && <CopyBtn text={info.upiId} />}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSuspend(principal)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                        style={{
+                          background: isSuspended
+                            ? "rgba(239,68,68,0.2)"
+                            : "rgba(255,255,255,0.06)",
+                          color: isSuspended
+                            ? "#F87171"
+                            : "rgba(255,255,255,0.5)",
+                          border: isSuspended
+                            ? "1px solid rgba(239,68,68,0.4)"
+                            : "1px solid rgba(255,255,255,0.1)",
+                        }}
+                        data-ocid={`taskers.toggle.${i + 1}`}
+                      >
+                        <ShieldOff size={12} />
+                        {isSuspended ? "Restore" : "Suspend"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {taskers.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="py-12 text-center text-white/20"
+                    data-ocid="taskers.empty_state"
+                  >
+                    {search ? "No taskers match your search" : "No taskers yet"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -564,6 +911,7 @@ function PaymentsTab({
 }) {
   const [filter, setFilter] = useState<PayFilter>("all");
   const [marking, setMarking] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const filters: { key: PayFilter; label: string }[] = [
     { key: "all", label: "All" },
@@ -572,13 +920,21 @@ function PaymentsTab({
     { key: "failed", label: "✗ Failed" },
   ];
 
-  const filtered = payments.filter((p) => {
-    if (filter === "all") return true;
+  let filtered = payments.filter((p) => {
     if (filter === "success") return p.status === PaymentStatus.COMPLETED;
     if (filter === "pending") return p.status === PaymentStatus.PAID;
     if (filter === "failed") return p.status === PaymentStatus.FAILED;
     return true;
   });
+
+  if (search) {
+    const q = search.toLowerCase();
+    filtered = filtered.filter(
+      (p) =>
+        p.paymentId.toLowerCase().includes(q) ||
+        p.taskId.toLowerCase().includes(q),
+    );
+  }
 
   async function handleMark(paymentId: string) {
     setMarking(paymentId);
@@ -588,27 +944,33 @@ function PaymentsTab({
 
   return (
     <div className="space-y-4">
-      {/* Filter buttons */}
-      <div className="flex gap-2 flex-wrap" data-ocid="payments.tab">
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFilter(f.key)}
-            className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
-            style={{
-              background: filter === f.key ? G : "rgba(255,255,255,0.05)",
-              color: filter === f.key ? "#000" : "rgba(255,255,255,0.5)",
-              border:
-                filter === f.key
-                  ? `1px solid ${G}`
-                  : "1px solid rgba(255,255,255,0.08)",
-            }}
-            data-ocid={`payments.${f.key}.toggle`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by Payment ID or Task ID…"
+        />
+        <div className="flex gap-2 flex-wrap" data-ocid="payments.tab">
+          {filters.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                background: filter === f.key ? G : "rgba(255,255,255,0.05)",
+                color: filter === f.key ? "#000" : "rgba(255,255,255,0.5)",
+                border:
+                  filter === f.key
+                    ? `1px solid ${G}`
+                    : "1px solid rgba(255,255,255,0.08)",
+              }}
+              data-ocid={`payments.${f.key}.toggle`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div
@@ -713,7 +1075,9 @@ function PaymentsTab({
                     className="py-12 text-center text-white/20"
                     data-ocid="payments.empty_state"
                   >
-                    No payments found
+                    {search
+                      ? "No payments match your search"
+                      : "No payments found"}
                   </td>
                 </tr>
               )}
@@ -734,6 +1098,7 @@ function PayoutsTab({
   onMarkPaid: (paymentId: string) => Promise<void>;
 }) {
   const [marking, setMarking] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const pending = payments.filter((p) => p.status === PaymentStatus.PAID);
   const completed = payments.filter(
@@ -741,9 +1106,20 @@ function PayoutsTab({
   );
   const pendingAmt = pending.reduce((a, p) => a + Number(p.amount), 0);
   const completedAmt = completed.reduce((a, p) => a + Number(p.amount), 0);
-  const platformRevenue = payments
-    .filter((p) => p.status === PaymentStatus.COMPLETED)
-    .reduce((a, p) => a + Number(p.amount) * 0.05, 0);
+  const platformRevenue = completed.reduce(
+    (a, p) => a + Number(p.amount) * 0.05,
+    0,
+  );
+
+  let filteredPayments = payments;
+  if (search) {
+    const q = search.toLowerCase();
+    filteredPayments = payments.filter(
+      (p) =>
+        p.taskId.toLowerCase().includes(q) ||
+        p.taskerUpiId?.toLowerCase().includes(q),
+    );
+  }
 
   async function handleMark(paymentId: string) {
     setMarking(paymentId);
@@ -753,7 +1129,6 @@ function PayoutsTab({
 
   return (
     <div className="space-y-6">
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         {[
           {
@@ -789,9 +1164,14 @@ function PayoutsTab({
         ))}
       </div>
 
-      {/* Payout cards */}
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search by Task ID or UPI ID…"
+      />
+
       <div className="space-y-3">
-        {payments.map((p, i) => (
+        {filteredPayments.map((p, i) => (
           <motion.div
             key={p.paymentId}
             layout
@@ -865,12 +1245,12 @@ function PayoutsTab({
             </div>
           </motion.div>
         ))}
-        {payments.length === 0 && (
+        {filteredPayments.length === 0 && (
           <div
             className="py-12 text-center text-white/20"
             data-ocid="payouts.empty_state"
           >
-            No payments recorded
+            {search ? "No payouts match your search" : "No payments recorded"}
           </div>
         )}
       </div>
@@ -886,34 +1266,64 @@ export function AdminDashboard() {
   const [payments, setPayments] = useState<EscrowPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshed, setRefreshed] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
 
+  async function loadData() {
+    if (!actor) return;
+    const [adminCheck, allTasks, allPayments] = await Promise.all([
+      actor.isCallerAdmin(),
+      actor.getAllTasks(),
+      actor.getPayments(),
+    ]);
+    setIsAdmin(adminCheck);
+    setTasks(allTasks);
+    setPayments(allPayments);
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadData intentionally excluded
   useEffect(() => {
     if (!actor || isFetching) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [adminCheck, allTasks, allPayments] = await Promise.all([
-        actor.isCallerAdmin(),
-        actor.getAllTasks(),
-        actor.getPayments(),
-      ]);
-      if (!cancelled) {
-        setIsAdmin(adminCheck);
-        setTasks(allTasks);
-        setPayments(allPayments);
-        setLoading(false);
-      }
+      await loadData();
+      if (!cancelled) setLoading(false);
     })().catch(console.error);
     return () => {
       cancelled = true;
     };
   }, [actor, isFetching]);
 
+  async function handleRefresh() {
+    if (!actor || refreshing) return;
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+    setRefreshed(true);
+    setTimeout(() => setRefreshed(false), 2000);
+  }
+
   async function handleMarkPaid(paymentId: string) {
     if (!actor) return;
     await actor.markPayoutComplete(paymentId);
     const updated = await actor.getPayments();
     setPayments(updated);
+  }
+
+  function handleCancelTask(taskId: string) {
+    // UI-only cancel (cancelTask not yet in deployed backend)
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }
+
+  function handleBlockUser(principal: string) {
+    setBlockedUsers((prev) => {
+      const next = new Set(prev);
+      if (next.has(principal)) next.delete(principal);
+      else next.add(principal);
+      return next;
+    });
   }
 
   const TABS: { key: Tab; label: string }[] = [
@@ -946,11 +1356,34 @@ export function AdminDashboard() {
     <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-          <p className="text-white/40 text-sm mt-1">
-            Task Turtle control panel
-          </p>
+        <div className="flex items-start justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+            <p className="text-white/40 text-sm mt-1">
+              Task Turtle control panel
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-90 flex-shrink-0"
+            style={{
+              background: refreshed ? `${G}20` : "rgba(255,255,255,0.06)",
+              color: refreshed ? G : "rgba(255,255,255,0.6)",
+              border: refreshed
+                ? `1px solid ${G}40`
+                : "1px solid rgba(255,255,255,0.10)",
+            }}
+            data-ocid="admin.primary_button"
+          >
+            <RefreshCw
+              size={15}
+              className={refreshing ? "animate-spin" : ""}
+              style={{ color: refreshed ? G : undefined }}
+            />
+            {refreshing ? "Refreshing…" : refreshed ? "Updated ✓" : "Refresh"}
+          </button>
         </div>
 
         {/* Tabs */}
@@ -988,8 +1421,22 @@ export function AdminDashboard() {
             {tab === "overview" && (
               <OverviewTab tasks={tasks} payments={payments} />
             )}
-            {tab === "tasks" && <AllTasksTab tasks={tasks} />}
-            {tab === "users" && <UsersTab tasks={tasks} />}
+            {tab === "tasks" && (
+              <AllTasksTab
+                tasks={tasks}
+                payments={payments}
+                blockedUsers={blockedUsers}
+                onBlockUser={handleBlockUser}
+                onCancelTask={handleCancelTask}
+              />
+            )}
+            {tab === "users" && (
+              <UsersTab
+                tasks={tasks}
+                blockedUsers={blockedUsers}
+                onBlockUser={handleBlockUser}
+              />
+            )}
             {tab === "taskers" && (
               <TaskersTab tasks={tasks} payments={payments} />
             )}

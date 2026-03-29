@@ -763,10 +763,23 @@ function UsersTab({
                         );
                       })()}
                       <td className="px-4 py-3">
-                        <span className="font-mono text-white/60 text-xs">
-                          {truncate(principal, 18)}
-                        </span>
-                        <CopyBtn text={principal} />
+                        <div className="flex flex-col gap-0.5">
+                          <span
+                            className="text-[10px] font-bold uppercase tracking-wider"
+                            style={{ color: "rgba(0,230,118,0.5)" }}
+                          >
+                            User ID
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <span
+                              className="font-mono font-bold text-xs"
+                              style={{ color: "#00E676" }}
+                            >
+                              {truncate(principal, 18)}
+                            </span>
+                            <CopyBtn text={principal} />
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="font-semibold text-white">
@@ -1001,22 +1014,33 @@ function TaskersTab({
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono text-white/60 text-xs">
-                            {truncate(principal, 16)}
+                        <div className="flex flex-col gap-0.5">
+                          <span
+                            className="text-[10px] font-bold uppercase tracking-wider"
+                            style={{ color: "rgba(0,230,118,0.5)" }}
+                          >
+                            Tasker ID
                           </span>
-                          <CopyBtn text={principal} />
-                          {isSuspended && (
+                          <div className="flex items-center gap-1">
                             <span
-                              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{
-                                background: "rgba(239,68,68,0.2)",
-                                color: "#F87171",
-                              }}
+                              className="font-mono font-bold text-xs"
+                              style={{ color: "#00E676" }}
                             >
-                              SUSPENDED
+                              {truncate(principal, 16)}
                             </span>
-                          )}
+                            <CopyBtn text={principal} />
+                            {isSuspended && (
+                              <span
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{
+                                  background: "rgba(239,68,68,0.2)",
+                                  color: "#F87171",
+                                }}
+                              >
+                                SUSPENDED
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">

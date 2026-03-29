@@ -2,7 +2,9 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ClipboardCopy,
   CreditCard,
+  Fingerprint,
   IdCard,
   Loader2,
   MapPin,
@@ -102,6 +104,30 @@ function FormField({
         </p>
       )}
     </div>
+  );
+}
+
+function PrincipalCopyBtn({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    if (!text) return;
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+      title="Copy principal ID"
+    >
+      {copied ? (
+        <CheckCircle2 size={14} style={{ color: "#00E676" }} />
+      ) : (
+        <ClipboardCopy size={14} className="text-white" />
+      )}
+    </button>
   );
 }
 
@@ -310,6 +336,45 @@ export default function MyProfile() {
                   style={touched && errors.name ? inputError : inputBase}
                 />
               </FormField>
+
+              {/* Principal ID display */}
+              <div>
+                <p
+                  className="flex items-center gap-2 mb-2 text-sm font-medium"
+                  style={{ color: "rgba(255,255,255,0.7)" }}
+                >
+                  <Fingerprint size={14} />
+                  Your Unique ID (Principal)
+                </p>
+                <div
+                  className="flex items-center gap-2"
+                  style={{
+                    ...inputBase,
+                    cursor: "default",
+                    userSelect: "all",
+                    padding: "10px 16px",
+                    background: "rgba(0,230,118,0.04)",
+                    border: "1px solid rgba(0,230,118,0.15)",
+                  }}
+                >
+                  <span
+                    className="font-mono text-xs flex-1 truncate"
+                    style={{ color: "#00E676", letterSpacing: "0.02em" }}
+                    title={identity?.getPrincipal().toText()}
+                  >
+                    {identity?.getPrincipal().toText() ?? "—"}
+                  </span>
+                  <PrincipalCopyBtn
+                    text={identity?.getPrincipal().toText() ?? ""}
+                  />
+                </div>
+                <p
+                  className="mt-1 text-[11px]"
+                  style={{ color: "rgba(255,255,255,0.25)" }}
+                >
+                  This is your unique blockchain identity — read-only
+                </p>
+              </div>
 
               <FormField
                 id="profile_phone"

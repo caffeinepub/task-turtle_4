@@ -54,6 +54,8 @@ export interface PublicTask {
     status: TaskStatus;
     title: string;
     createdAt: bigint;
+    acceptedAt?: [] | [bigint];
+    completedAt?: [] | [bigint];
     description: string;
     category: string;
     acceptor?: Principal;
@@ -68,6 +70,10 @@ export interface UserProfile {
     upiId: string;
     phone: string;
     location: string;
+}
+export interface UserProfileEntry {
+    principal: string;
+    profile: UserProfile;
 }
 export interface http_header {
     value: string;
@@ -97,6 +103,7 @@ export interface backendInterface {
     createRazorpayOrder(amount: bigint, taskId: string, _userId: string, _taskerUpiId: string): Promise<Result>;
     createTask(title: string, description: string, category: string, location: string, amount: bigint): Promise<string | null>;
     getAllTasks(): Promise<Array<PublicTask>>;
+    getAllUserProfiles(): Promise<Array<UserProfileEntry>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMyAcceptedTasks(): Promise<Array<PublicTask>>;

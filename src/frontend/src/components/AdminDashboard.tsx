@@ -3,6 +3,7 @@ import {
   CheckCircle,
   ClipboardCopy,
   DollarSign,
+  Eye,
   ListChecks,
   Loader2,
   RefreshCw,
@@ -14,7 +15,12 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import type { EscrowPayment, PublicTask } from "../backend.d";
+import type {
+  EscrowPayment,
+  PublicTask,
+  UserProfile,
+  UserProfileEntry,
+} from "../backend.d";
 import { PaymentStatus, TaskStatus } from "../backend.d";
 import { useActor } from "../hooks/useActor";
 
@@ -121,16 +127,93 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function formatDate(ts: bigint) {
+function formatDateTime(ts: bigint | null | undefined) {
+  if (!ts) return "—";
   try {
-    return new Date(Number(ts / 1_000_000n)).toLocaleDateString();
+    const d = new Date(Number(ts / 1_000_000n));
+    return `${d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}, ${d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
   } catch {
     return "—";
   }
 }
 
+// Legacy alias used in overview
+function formatDate(ts: bigint) {
+  return formatDateTime(ts);
+}
+
 function formatINR(amount: bigint) {
   return `₹${Number(amount).toLocaleString("en-IN")}`;
+}
+
+// ─────────────────── Profile Modal ───────────────────
+function ProfileModal({
+  profile,
+  onClose,
+}: { profile: UserProfile; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.92 }}
+        transition={{ duration: 0.18 }}
+        className="rounded-2xl p-6 w-full max-w-sm relative"
+        style={{
+          background: "rgba(10,20,14,0.97)",
+          border: "1px solid rgba(0,230,118,0.2)",
+          boxShadow: "0 0 40px rgba(0,230,118,0.15)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-white font-black text-lg">User Profile</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
+            style={{ color: "rgba(255,255,255,0.4)" }}
+            data-ocid="profile.close_button"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="space-y-3">
+          {[
+            { label: "Full Name", value: profile.name },
+            { label: "Phone", value: profile.phone },
+            { label: "Location", value: profile.location },
+            { label: "UPI ID", value: profile.upiId },
+            ...(profile.aadharNumber
+              ? [{ label: "Aadhar Number", value: profile.aadharNumber }]
+              : []),
+            ...(profile.studentId
+              ? [{ label: "Student ID", value: profile.studentId }]
+              : []),
+          ].map(({ label, value }) => (
+            <div
+              key={label}
+              className="rounded-xl px-4 py-3"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+              }}
+            >
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                {label}
+              </p>
+              <p className="text-white font-semibold text-sm">{value || "—"}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
 }
 
 // ─────────────────── Overview ───────────────────
@@ -384,7 +467,9 @@ function AllTasksTab({
                   "Posted By",
                   "Accepted By",
                   "Tasker UPI",
-                  "Date",
+                  "Posted",
+                  "Accepted",
+                  "Delivered",
                   "Actions",
                 ].map((h) => (
                   <th
@@ -466,8 +551,18 @@ function AllTasksTab({
                       <span className="text-white/60 text-xs">{upiId}</span>
                       {upiId !== "—" && <CopyBtn text={upiId} />}
                     </td>
-                    <td className="px-4 py-3 text-white/30 text-xs">
-                      {formatDate(t.createdAt)}
+                    <td className="px-4 py-3 text-white/30 text-xs whitespace-nowrap">
+                      {formatDateTime(t.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-white/30 text-xs whitespace-nowrap">
+                      {t.acceptedAt && t.acceptedAt.length > 0
+                        ? formatDateTime(t.acceptedAt[0])
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-white/30 text-xs whitespace-nowrap">
+                      {t.completedAt && t.completedAt.length > 0
+                        ? formatDateTime(t.completedAt[0])
+                        : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -543,12 +638,15 @@ function UsersTab({
   tasks,
   blockedUsers,
   onBlockUser,
+  profileMap,
 }: {
   tasks: PublicTask[];
   blockedUsers: Set<string>;
   onBlockUser: (principal: string) => void;
+  profileMap: Map<string, UserProfile>;
 }) {
   const [search, setSearch] = useState("");
+  const [viewProfile, setViewProfile] = useState<UserProfile | null>(null);
 
   // Build user map: principal -> { taskCount, amountSpent }
   const userMap = new Map<string, { taskCount: number; amountSpent: number }>();
@@ -565,140 +663,192 @@ function UsersTab({
 
   if (search) {
     const q = search.toLowerCase();
-    users = users.filter(([principal]) => principal.toLowerCase().includes(q));
+    users = users.filter(([principal]) => {
+      const p = profileMap.get(principal);
+      return (
+        principal.toLowerCase().includes(q) ||
+        (p?.name?.toLowerCase().includes(q) ?? false) ||
+        (p?.phone?.toLowerCase().includes(q) ?? false)
+      );
+    });
   }
 
   return (
-    <div className="space-y-4">
-      <SearchBar
-        value={search}
-        onChange={setSearch}
-        placeholder="Search by name or Principal ID…"
-      />
+    <>
+      <div className="space-y-4">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by name or Principal ID…"
+        />
 
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: CARD, border: BORDER }}
-      >
         <div
-          className="px-5 py-3 border-b"
-          style={{ borderColor: "rgba(255,255,255,0.06)" }}
+          className="rounded-2xl overflow-hidden"
+          style={{ background: CARD, border: BORDER }}
         >
-          <p className="text-white font-semibold">{users.length} Users</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                className="text-white/60 text-xs border-b font-bold"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
-              >
-                {[
-                  "#",
-                  "Name",
-                  "Phone No",
-                  "Location",
-                  "Principal ID",
-                  "Amount Spent",
-                  "Wallet Balance",
-                  "Tasks",
-                  "Actions",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-4 py-3 font-bold whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {users.map(([principal, info], i) => {
-                const isBlocked = blockedUsers.has(principal);
-                return (
-                  <tr
-                    key={principal}
-                    className="hover:bg-white/[0.02]"
-                    data-ocid={`users.item.${i + 1}`}
-                  >
-                    <td className="px-4 py-3 text-white/20 text-xs">{i + 1}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white/70 text-xs">—</span>
-                        {isBlocked && (
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+          <div
+            className="px-5 py-3 border-b"
+            style={{ borderColor: "rgba(255,255,255,0.06)" }}
+          >
+            <p className="text-white font-semibold">{users.length} Users</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr
+                  className="text-white/60 text-xs border-b font-bold"
+                  style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                >
+                  {[
+                    "#",
+                    "Name",
+                    "Phone No",
+                    "Location",
+                    "Principal ID",
+                    "Amount Spent",
+                    "Wallet Balance",
+                    "Tasks",
+                    "Actions",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-4 py-3 font-bold whitespace-nowrap"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {users.map(([principal, info], i) => {
+                  const isBlocked = blockedUsers.has(principal);
+                  return (
+                    <tr
+                      key={principal}
+                      className="hover:bg-white/[0.02]"
+                      data-ocid={`users.item.${i + 1}`}
+                    >
+                      <td className="px-4 py-3 text-white/20 text-xs">
+                        {i + 1}
+                      </td>
+                      {(() => {
+                        const prof = profileMap.get(principal);
+                        return (
+                          <>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-semibold text-sm">
+                                  {prof?.name || "—"}
+                                </span>
+                                {isBlocked && (
+                                  <span
+                                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                                    style={{
+                                      background: "rgba(239,68,68,0.2)",
+                                      color: "#F87171",
+                                    }}
+                                  >
+                                    BLOCKED
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-white/70 text-xs">
+                              {prof?.phone || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-white/70 text-xs">
+                              {prof?.location || "—"}
+                            </td>
+                          </>
+                        );
+                      })()}
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-white/60 text-xs">
+                          {truncate(principal, 18)}
+                        </span>
+                        <CopyBtn text={principal} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold text-white">
+                          ₹{info.amountSpent.toLocaleString("en-IN")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-white/40 text-xs">—</td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold" style={{ color: G }}>
+                          {info.taskCount}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onBlockUser(principal)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
                             style={{
-                              background: "rgba(239,68,68,0.2)",
-                              color: "#F87171",
+                              background: isBlocked
+                                ? "rgba(239,68,68,0.2)"
+                                : "rgba(255,255,255,0.06)",
+                              color: isBlocked
+                                ? "#F87171"
+                                : "rgba(255,255,255,0.5)",
+                              border: isBlocked
+                                ? "1px solid rgba(239,68,68,0.4)"
+                                : "1px solid rgba(255,255,255,0.1)",
                             }}
+                            data-ocid={`users.toggle.${i + 1}`}
                           >
-                            BLOCKED
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-white/60 text-xs">
-                        {truncate(principal, 18)}
-                      </span>
-                      <CopyBtn text={principal} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-semibold text-white">
-                        ₹{info.amountSpent.toLocaleString("en-IN")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
-                    <td className="px-4 py-3">
-                      <span className="font-semibold" style={{ color: G }}>
-                        {info.taskCount}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => onBlockUser(principal)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
-                        style={{
-                          background: isBlocked
-                            ? "rgba(239,68,68,0.2)"
-                            : "rgba(255,255,255,0.06)",
-                          color: isBlocked
-                            ? "#F87171"
-                            : "rgba(255,255,255,0.5)",
-                          border: isBlocked
-                            ? "1px solid rgba(239,68,68,0.4)"
-                            : "1px solid rgba(255,255,255,0.1)",
-                        }}
-                        data-ocid={`users.toggle.${i + 1}`}
-                      >
-                        <Ban size={12} />
-                        {isBlocked ? "Unblock" : "Block"}
-                      </button>
+                            <Ban size={12} />
+                            {isBlocked ? "Unblock" : "Block"}
+                          </button>
+                          {profileMap.get(principal) && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewProfile(profileMap.get(principal)!)
+                              }
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                              style={{
+                                background: "rgba(0,230,118,0.1)",
+                                color: "#00E676",
+                                border: "1px solid rgba(0,230,118,0.3)",
+                              }}
+                              data-ocid={`users.secondary_button.${i + 1}`}
+                              title="View Profile"
+                            >
+                              <Eye size={12} /> View
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {users.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="py-12 text-center text-white/20"
+                      data-ocid="users.empty_state"
+                    >
+                      {search ? "No users match your search" : "No users yet"}
                     </td>
                   </tr>
-                );
-              })}
-              {users.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="py-12 text-center text-white/20"
-                    data-ocid="users.empty_state"
-                  >
-                    {search ? "No users match your search" : "No users yet"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+      <AnimatePresence>
+        {viewProfile && (
+          <ProfileModal
+            profile={viewProfile}
+            onClose={() => setViewProfile(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -706,12 +856,15 @@ function UsersTab({
 function TaskersTab({
   tasks,
   payments,
+  profileMap,
 }: {
   tasks: PublicTask[];
   payments: EscrowPayment[];
+  profileMap: Map<string, UserProfile>;
 }) {
   const [search, setSearch] = useState("");
   const [suspended, setSuspended] = useState<Set<string>>(new Set());
+  const [viewProfile, setViewProfile] = useState<UserProfile | null>(null);
 
   const taskerMap = new Map<
     string,
@@ -762,149 +915,196 @@ function TaskersTab({
   }
 
   return (
-    <div className="space-y-4">
-      <SearchBar
-        value={search}
-        onChange={setSearch}
-        placeholder="Search by Principal ID or UPI ID…"
-      />
+    <>
+      <div className="space-y-4">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by Principal ID or UPI ID…"
+        />
 
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: CARD, border: BORDER }}
-      >
         <div
-          className="px-5 py-3 border-b"
-          style={{ borderColor: "rgba(255,255,255,0.06)" }}
+          className="rounded-2xl overflow-hidden"
+          style={{ background: CARD, border: BORDER }}
         >
-          <p className="text-white font-semibold">{taskers.length} Taskers</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                className="text-white/60 text-xs border-b font-bold"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
-              >
-                {[
-                  "#",
-                  "Name",
-                  "Phone",
-                  "Location",
-                  "Active",
-                  "Principal ID",
-                  "Tasks Completed",
-                  "Total Earned",
-                  "UPI ID",
-                  "Actions",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-4 py-3 font-bold whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {taskers.map(([principal, info], i) => {
-                const isSuspended = suspended.has(principal);
-                return (
-                  <tr
-                    key={principal}
-                    className="hover:bg-white/[0.02]"
-                    data-ocid={`taskers.item.${i + 1}`}
-                  >
-                    <td className="px-4 py-3 text-white/20 text-xs">{i + 1}</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">—</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="inline-block w-2.5 h-2.5 rounded-full"
-                        style={{
-                          background: info.isActive
-                            ? G
-                            : "rgba(255,255,255,0.2)",
-                        }}
-                        title={info.isActive ? "Active" : "Inactive"}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono text-white/60 text-xs">
-                          {truncate(principal, 16)}
-                        </span>
-                        <CopyBtn text={principal} />
-                        {isSuspended && (
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{
-                              background: "rgba(239,68,68,0.2)",
-                              color: "#F87171",
-                            }}
-                          >
-                            SUSPENDED
+          <div
+            className="px-5 py-3 border-b"
+            style={{ borderColor: "rgba(255,255,255,0.06)" }}
+          >
+            <p className="text-white font-semibold">{taskers.length} Taskers</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr
+                  className="text-white/60 text-xs border-b font-bold"
+                  style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                >
+                  {[
+                    "#",
+                    "Name",
+                    "Phone",
+                    "Location",
+                    "Active",
+                    "Principal ID",
+                    "Tasks Completed",
+                    "Total Earned",
+                    "UPI ID",
+                    "Actions",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-4 py-3 font-bold whitespace-nowrap"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {taskers.map(([principal, info], i) => {
+                  const isSuspended = suspended.has(principal);
+                  return (
+                    <tr
+                      key={principal}
+                      className="hover:bg-white/[0.02]"
+                      data-ocid={`taskers.item.${i + 1}`}
+                    >
+                      <td className="px-4 py-3 text-white/20 text-xs">
+                        {i + 1}
+                      </td>
+                      {(() => {
+                        const prof = profileMap.get(principal);
+                        return (
+                          <>
+                            <td className="px-4 py-3 text-white font-semibold text-sm">
+                              {prof?.name || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-white/70 text-xs">
+                              {prof?.phone || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-white/70 text-xs">
+                              {prof?.location || "—"}
+                            </td>
+                          </>
+                        );
+                      })()}
+                      <td className="px-4 py-3">
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full"
+                          style={{
+                            background: info.isActive
+                              ? G
+                              : "rgba(255,255,255,0.2)",
+                          }}
+                          title={info.isActive ? "Active" : "Inactive"}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-white/60 text-xs">
+                            {truncate(principal, 16)}
                           </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-semibold" style={{ color: G }}>
-                        {info.completed}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white">
-                      ₹{Math.round(info.earned).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-white/60 text-xs">
-                        {info.upiId}
-                      </span>
-                      {info.upiId !== "—" && <CopyBtn text={info.upiId} />}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleSuspend(principal)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
-                        style={{
-                          background: isSuspended
-                            ? "rgba(239,68,68,0.2)"
-                            : "rgba(255,255,255,0.06)",
-                          color: isSuspended
-                            ? "#F87171"
-                            : "rgba(255,255,255,0.5)",
-                          border: isSuspended
-                            ? "1px solid rgba(239,68,68,0.4)"
-                            : "1px solid rgba(255,255,255,0.1)",
-                        }}
-                        data-ocid={`taskers.toggle.${i + 1}`}
-                      >
-                        <ShieldOff size={12} />
-                        {isSuspended ? "Restore" : "Suspend"}
-                      </button>
+                          <CopyBtn text={principal} />
+                          {isSuspended && (
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{
+                                background: "rgba(239,68,68,0.2)",
+                                color: "#F87171",
+                              }}
+                            >
+                              SUSPENDED
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold" style={{ color: G }}>
+                          {info.completed}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-white">
+                        ₹{Math.round(info.earned).toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-white/60 text-xs">
+                          {info.upiId}
+                        </span>
+                        {info.upiId !== "—" && <CopyBtn text={info.upiId} />}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleSuspend(principal)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                            style={{
+                              background: isSuspended
+                                ? "rgba(239,68,68,0.2)"
+                                : "rgba(255,255,255,0.06)",
+                              color: isSuspended
+                                ? "#F87171"
+                                : "rgba(255,255,255,0.5)",
+                              border: isSuspended
+                                ? "1px solid rgba(239,68,68,0.4)"
+                                : "1px solid rgba(255,255,255,0.1)",
+                            }}
+                            data-ocid={`taskers.toggle.${i + 1}`}
+                          >
+                            <ShieldOff size={12} />
+                            {isSuspended ? "Restore" : "Suspend"}
+                          </button>
+                          {profileMap.get(principal) && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewProfile(profileMap.get(principal)!)
+                              }
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                              style={{
+                                background: "rgba(0,230,118,0.1)",
+                                color: "#00E676",
+                                border: "1px solid rgba(0,230,118,0.3)",
+                              }}
+                              data-ocid={`taskers.secondary_button.${i + 1}`}
+                              title="View Profile"
+                            >
+                              <Eye size={12} /> View
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {taskers.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="py-12 text-center text-white/20"
+                      data-ocid="taskers.empty_state"
+                    >
+                      {search
+                        ? "No taskers match your search"
+                        : "No taskers yet"}
                     </td>
                   </tr>
-                );
-              })}
-              {taskers.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="py-12 text-center text-white/20"
-                    data-ocid="taskers.empty_state"
-                  >
-                    {search ? "No taskers match your search" : "No taskers yet"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+      <AnimatePresence>
+        {viewProfile && (
+          <ProfileModal
+            profile={viewProfile}
+            onClose={() => setViewProfile(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -1323,17 +1523,26 @@ export function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshed, setRefreshed] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
+  const [profileMap, setProfileMap] = useState<Map<string, UserProfile>>(
+    new Map(),
+  );
 
   async function loadData() {
     if (!actor) return;
-    const [adminCheck, allTasks, allPayments] = await Promise.all([
+    const [adminCheck, allTasks, allPayments, allProfiles] = await Promise.all([
       actor.isCallerAdmin(),
       actor.getAllTasks(),
       actor.getPayments(),
+      (
+        actor as unknown as {
+          getAllUserProfiles?: () => Promise<UserProfileEntry[]>;
+        }
+      ).getAllUserProfiles?.() ?? Promise.resolve([] as UserProfileEntry[]),
     ]);
     setIsAdmin(adminCheck);
     setTasks(allTasks);
     setPayments(allPayments);
+    setProfileMap(new Map(allProfiles.map((e) => [e.principal, e.profile])));
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadData intentionally excluded
@@ -1500,10 +1709,15 @@ export function AdminDashboard() {
                 tasks={tasks}
                 blockedUsers={blockedUsers}
                 onBlockUser={handleBlockUser}
+                profileMap={profileMap}
               />
             )}
             {tab === "taskers" && (
-              <TaskersTab tasks={tasks} payments={payments} />
+              <TaskersTab
+                tasks={tasks}
+                payments={payments}
+                profileMap={profileMap}
+              />
             )}
             {tab === "payments" && (
               <PaymentsTab payments={payments} onMarkPaid={handleMarkPaid} />

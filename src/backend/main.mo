@@ -47,12 +47,18 @@ actor {
     studentId : ?Text;
   };
 
+  public type UserProfileEntry = {
+    principal : Text;
+    profile : UserProfile;
+  };
+
   type TaskStatus = {
     #open;
     #accepted;
     #completed;
   };
 
+  // Task type unchanged for stable variable compatibility
   type Task = {
     id : Text;
     title : Text;
@@ -67,6 +73,12 @@ actor {
     createdAt : Int;
   };
 
+  // Timestamps stored separately to avoid stable variable migration
+  type TaskTimestamps = {
+    acceptedAt : ?Int;
+    completedAt : ?Int;
+  };
+
   // Public task type without OTP (for queries)
   public type PublicTask = {
     id : Text;
@@ -79,6 +91,8 @@ actor {
     poster : Principal;
     acceptor : ?Principal;
     createdAt : Int;
+    acceptedAt : ?Int;
+    completedAt : ?Int;
   };
 
   // Authorization state
@@ -88,6 +102,8 @@ actor {
   let payments = Map.empty<Text, EscrowPayment>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let tasks = Map.empty<Text, Task>();
+  // Separate map for task timestamps — avoids breaking stable Task type
+  let taskTimestamps = Map.empty<Text, TaskTimestamps>();
 
   // Razorpay Basic Auth: base64(key_id:key_secret)
   let RAZORPAY_BASIC_AUTH = "cnpwX2xpdmVfU1JOYlR3eUVtelFTdk86MEszRTBxMFJJSmhoNDROUUw0YmZnSW5m";
@@ -123,6 +139,16 @@ actor {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
+  };
+
+  // Admin: get all user profiles
+  public query ({ caller }) func getAllUserProfiles() : async [UserProfileEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all profiles");
+    };
+    userProfiles.entries().toArray().map(func((p, profile)) : UserProfileEntry {
+      { principal = p.toText(); profile }
+    });
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
@@ -161,7 +187,6 @@ actor {
       Runtime.trap("Unauthorized: Only users can verify payments");
     };
 
-    // Signature verification performed client-side via Web Crypto HMAC-SHA256.
     let payment : EscrowPayment = {
       taskId;
       amount;
@@ -221,8 +246,11 @@ actor {
     #ok;
   };
 
-  // Helper function to convert Task to PublicTask (removes OTP)
+  // Helper: convert Task to PublicTask, merging timestamps from separate map
   func toPublicTask(task : Task) : PublicTask {
+    let ts = taskTimestamps.get(task.id);
+    let acceptedAt : ?Int = switch (ts) { case (?t) { t.acceptedAt }; case (null) { null } };
+    let completedAt : ?Int = switch (ts) { case (?t) { t.completedAt }; case (null) { null } };
     {
       id = task.id;
       title = task.title;
@@ -234,6 +262,8 @@ actor {
       poster = task.poster;
       acceptor = task.acceptor;
       createdAt = task.createdAt;
+      acceptedAt;
+      completedAt;
     };
   };
 
@@ -268,7 +298,6 @@ actor {
     switch (tasks.get(taskId)) {
       case (null) { null };
       case (?task) {
-        // Prevent self-acceptance
         if (task.poster == caller) {
           Runtime.trap("Unauthorized: Cannot accept your own task");
         };
@@ -276,6 +305,10 @@ actor {
           case (#open, _) {
             let updatedTask = { task with acceptor = ?caller; status = #accepted };
             tasks.add(taskId, updatedTask);
+            // Record accepted timestamp
+            let prevTs = taskTimestamps.get(taskId);
+            let prevCompleted : ?Int = switch (prevTs) { case (?t) { t.completedAt }; case (null) { null } };
+            taskTimestamps.add(taskId, { acceptedAt = ?Time.now(); completedAt = prevCompleted });
             ?toPublicTask(updatedTask);
           };
           case (#accepted, _) { Runtime.trap("Task is not open") };
@@ -290,9 +323,7 @@ actor {
       Runtime.trap("Unauthorized: Only users can complete tasks");
     };
     let task = switch (tasks.get(taskId)) {
-      case (null) {
-        Runtime.trap("Task not found");
-      };
+      case (null) { Runtime.trap("Task not found") };
       case (?task) { task };
     };
     if (task.acceptor != ?caller) {
@@ -306,9 +337,12 @@ actor {
     };
     let updatedTask = { task with status = #completed };
     tasks.add(taskId, updatedTask);
+    // Record completed timestamp
+    let prevTs = taskTimestamps.get(taskId);
+    let prevAccepted : ?Int = switch (prevTs) { case (?t) { t.acceptedAt }; case (null) { null } };
+    taskTimestamps.add(taskId, { acceptedAt = prevAccepted; completedAt = ?Time.now() });
     ?toPublicTask(updatedTask);
   };
-
 
   // Cancel task - only poster, only when open
   public shared ({ caller }) func cancelTask(taskId : Text) : async Result {
@@ -324,6 +358,7 @@ actor {
         switch (task.status) {
           case (#open) {
             ignore tasks.remove(taskId);
+            ignore taskTimestamps.remove(taskId);
             #ok;
           };
           case (_) { #err("Task cannot be cancelled after being accepted") };
@@ -331,6 +366,7 @@ actor {
       };
     };
   };
+
   // Public query - anyone can view task details (without OTP)
   public query ({ caller }) func getTask(taskId : Text) : async ?PublicTask {
     switch (tasks.get(taskId)) {

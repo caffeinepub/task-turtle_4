@@ -22,14 +22,16 @@ const G = "#00E676";
 const CARD = "rgba(255,255,255,0.04)";
 const BORDER = "1px solid rgba(255,255,255,0.08)";
 const SEARCH_STYLE: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(255,255,255,0.07)",
+  border: "1px solid rgba(255,255,255,0.14)",
   color: "#fff",
   borderRadius: 10,
-  padding: "8px 12px 8px 36px",
-  fontSize: 13,
+  padding: "10px 14px 10px 40px",
+  fontSize: 14,
+  fontWeight: 600,
   outline: "none",
   width: "100%",
+  transition: "border-color 0.2s, box-shadow 0.2s",
 };
 
 type Tab = "overview" | "tasks" | "users" | "taskers" | "payments" | "payouts";
@@ -49,7 +51,7 @@ function SearchBar({
   placeholder?: string;
 }) {
   return (
-    <div className="relative" style={{ maxWidth: 320 }}>
+    <div className="relative flex-1" style={{ maxWidth: 560 }}>
       <Search
         size={14}
         className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -61,6 +63,7 @@ function SearchBar({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? "Search…"}
         style={SEARCH_STYLE}
+        className="search-input"
         data-ocid="admin.search_input"
       />
     </div>
@@ -110,7 +113,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span
-      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+      className="text-[11px] font-bold px-2.5 py-1 rounded-full"
       style={{ background: s.bg, color: s.color }}
     >
       {s.label}
@@ -203,19 +206,23 @@ function OverviewTab({
 
       <div className="grid grid-cols-2 gap-4">
         <div
-          className="rounded-2xl p-4"
-          style={{ background: CARD, border: BORDER }}
+          className="rounded-2xl p-4 stat-card"
+          style={{ background: CARD, border: BORDER, transition: "all 0.2s" }}
         >
-          <p className="text-white/40 text-xs mb-1">Active Tasks Now</p>
+          <p className="text-white/60 text-xs mb-1 font-bold">
+            Active Tasks Now
+          </p>
           <p className="text-xl font-bold" style={{ color: "#FBBF24" }}>
             {accepted.length}
           </p>
         </div>
         <div
-          className="rounded-2xl p-4"
-          style={{ background: CARD, border: BORDER }}
+          className="rounded-2xl p-4 stat-card"
+          style={{ background: CARD, border: BORDER, transition: "all 0.2s" }}
         >
-          <p className="text-white/40 text-xs mb-1">Registered Taskers</p>
+          <p className="text-white/60 text-xs mb-1 font-bold">
+            Registered Taskers
+          </p>
           <p className="text-xl font-bold" style={{ color: "#A78BFA" }}>
             {uniqueAcceptors}
           </p>
@@ -226,7 +233,7 @@ function OverviewTab({
         className="rounded-2xl p-5"
         style={{ background: CARD, border: BORDER }}
       >
-        <p className="text-white/60 text-sm font-semibold mb-4">
+        <p className="text-white/80 text-sm font-bold mb-4">
           Task Status Breakdown
         </p>
         <div className="flex gap-3 flex-wrap">
@@ -262,23 +269,25 @@ function OverviewTab({
         className="rounded-2xl p-5"
         style={{ background: CARD, border: BORDER }}
       >
-        <p className="text-white/60 text-sm font-semibold mb-4">
-          Recent Activity
-        </p>
+        <p className="text-white/80 text-sm font-bold mb-4">Recent Activity</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-white/30 text-xs">
-                <th className="text-left pb-3 font-normal">Task</th>
-                <th className="text-left pb-3 font-normal">Posted By</th>
-                <th className="text-left pb-3 font-normal">Amount</th>
-                <th className="text-left pb-3 font-normal">Status</th>
-                <th className="text-left pb-3 font-normal">Date</th>
+              <tr className="text-white/60 text-xs font-bold">
+                <th className="text-left pb-3 font-bold">Task</th>
+                <th className="text-left pb-3 font-bold">Posted By</th>
+                <th className="text-left pb-3 font-bold">Amount</th>
+                <th className="text-left pb-3 font-bold">Status</th>
+                <th className="text-left pb-3 font-bold">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {recent.map((t, i) => (
-                <tr key={t.id} data-ocid={`overview.item.${i + 1}`}>
+                <tr
+                  key={t.id}
+                  data-ocid={`overview.item.${i + 1}`}
+                  className="admin-table-row transition-all duration-200"
+                >
                   <td className="py-2.5">
                     <p className="text-white font-medium">
                       {truncate(t.title, 22)}
@@ -362,7 +371,7 @@ function AllTasksTab({
           <table className="w-full text-sm">
             <thead>
               <tr
-                className="text-white/30 text-xs border-b"
+                className="text-white/60 text-xs border-b font-bold"
                 style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
                 {[
@@ -380,7 +389,7 @@ function AllTasksTab({
                 ].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-4 py-3 font-normal whitespace-nowrap"
+                    className="text-left px-4 py-3 font-bold whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -581,7 +590,7 @@ function UsersTab({
           <table className="w-full text-sm">
             <thead>
               <tr
-                className="text-white/30 text-xs border-b"
+                className="text-white/60 text-xs border-b font-bold"
                 style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
                 {[
@@ -597,7 +606,7 @@ function UsersTab({
                 ].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-4 py-3 font-normal whitespace-nowrap"
+                    className="text-left px-4 py-3 font-bold whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -774,7 +783,7 @@ function TaskersTab({
           <table className="w-full text-sm">
             <thead>
               <tr
-                className="text-white/30 text-xs border-b"
+                className="text-white/60 text-xs border-b font-bold"
                 style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
                 {[
@@ -791,7 +800,7 @@ function TaskersTab({
                 ].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-4 py-3 font-normal whitespace-nowrap"
+                    className="text-left px-4 py-3 font-bold whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -981,7 +990,7 @@ function PaymentsTab({
           <table className="w-full text-sm">
             <thead>
               <tr
-                className="text-white/30 text-xs border-b"
+                className="text-white/60 text-xs border-b font-bold"
                 style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
                 {[
@@ -992,7 +1001,7 @@ function PaymentsTab({
                   "Status",
                   "Payout",
                 ].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 font-normal">
+                  <th key={h} className="text-left px-4 py-3 font-bold">
                     {h}
                   </th>
                 ))}
@@ -1259,6 +1268,51 @@ function PayoutsTab({
 }
 
 // ─────────────────── Main ───────────────────
+function AdminTabButton({
+  tabKey,
+  label,
+  activeTab,
+  onClick,
+}: {
+  tabKey: Tab;
+  label: string;
+  activeTab: Tab;
+  onClick: (k: Tab) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const isActive = activeTab === tabKey;
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(tabKey)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex-shrink-0 px-4 py-2 rounded-lg text-sm transition-all cursor-pointer"
+      style={{
+        background: isActive
+          ? G
+          : hovered
+            ? "rgba(0,230,118,0.10)"
+            : "transparent",
+        color: isActive
+          ? "#000"
+          : hovered
+            ? "rgba(255,255,255,0.85)"
+            : "rgba(255,255,255,0.45)",
+        fontWeight: isActive ? 800 : 600,
+        boxShadow: isActive
+          ? "0 0 14px rgba(0,230,118,0.4), inset 0 -2px 0 rgba(0,0,0,0.15)"
+          : "none",
+        borderBottom: isActive ? `2px solid ${G}` : "2px solid transparent",
+        transition: "all 0.2s",
+      }}
+      data-ocid={`admin.${tabKey}.tab`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function AdminDashboard() {
   const { actor, isFetching } = useActor();
   const [tab, setTab] = useState<Tab>("overview");
@@ -1353,12 +1407,29 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div
+      className="min-h-screen"
+      style={{
+        background:
+          "linear-gradient(135deg, #050505 0%, #0a120e 50%, #050505 100%)",
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Animated green top border */}
+        <div
+          className="h-[2px] w-full rounded-full mb-6"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, #00E676 40%, #00E67640 60%, transparent 100%)",
+            animation: "pulse-green 2.5s ease-in-out infinite",
+          }}
+        />
         {/* Header */}
         <div className="flex items-start justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              Admin Dashboard
+            </h1>
             <p className="text-white/40 text-sm mt-1">
               Task Turtle control panel
             </p>
@@ -1393,19 +1464,13 @@ export function AdminDashboard() {
           data-ocid="admin.tab"
         >
           {TABS.map((t) => (
-            <button
+            <AdminTabButton
               key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-              style={{
-                background: tab === t.key ? G : "transparent",
-                color: tab === t.key ? "#000" : "rgba(255,255,255,0.4)",
-              }}
-              data-ocid={`admin.${t.key}.tab`}
-            >
-              {t.label}
-            </button>
+              tabKey={t.key}
+              label={t.label}
+              activeTab={tab}
+              onClick={setTab}
+            />
           ))}
         </div>
 

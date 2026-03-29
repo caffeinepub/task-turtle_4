@@ -1174,6 +1174,61 @@ function FindTasksTab() {
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
+function DashTabButton({
+  id,
+  label,
+  count,
+  activeTab,
+  onSelect,
+}: {
+  id: Tab;
+  label: string;
+  count: number | null;
+  activeTab: Tab;
+  onSelect: (id: Tab) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const isActive = activeTab === id;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(id)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm transition-all cursor-pointer"
+      style={{
+        background: isActive
+          ? GREEN
+          : hovered
+            ? "rgba(0,230,118,0.10)"
+            : "transparent",
+        color: isActive
+          ? "#050505"
+          : hovered
+            ? "rgba(255,255,255,0.9)"
+            : "rgba(255,255,255,0.5)",
+        fontWeight: isActive ? 800 : 700,
+        boxShadow: isActive ? `0 0 16px ${GREEN}40` : "none",
+        transition: "all 0.2s",
+      }}
+      data-ocid={`dashboard.${id}.tab`}
+    >
+      {label}
+      {count !== null && count > 0 && (
+        <span
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold"
+          style={{
+            background: isActive ? "rgba(0,0,0,0.2)" : `${GREEN}25`,
+            color: isActive ? "#050505" : GREEN,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export function Dashboard() {
   useInternetIdentity();
   const { actor } = useActor();
@@ -1246,31 +1301,14 @@ export function Dashboard() {
           }}
         >
           {TABS.map(({ id, label, count }) => (
-            <button
+            <DashTabButton
               key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-              style={{
-                background: tab === id ? GREEN : "transparent",
-                color: tab === id ? "#050505" : "rgba(255,255,255,0.5)",
-                boxShadow: tab === id ? `0 0 16px ${GREEN}40` : "none",
-              }}
-              data-ocid={`dashboard.${id}.tab`}
-            >
-              {label}
-              {count !== null && count > 0 && (
-                <span
-                  className="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold"
-                  style={{
-                    background: tab === id ? "rgba(0,0,0,0.2)" : `${GREEN}25`,
-                    color: tab === id ? "#050505" : GREEN,
-                  }}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
+              id={id}
+              label={label}
+              count={count}
+              activeTab={tab}
+              onSelect={setTab}
+            />
           ))}
         </div>
 

@@ -1,4 +1,5 @@
 import { LogOut, Turtle } from "lucide-react";
+import { useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 const GREEN = "#00E676";
@@ -12,6 +13,45 @@ const NAV_LINKS: { label: string; page: Page; hash: string }[] = [
   { label: "Profile", page: "profile", hash: "#profile" },
 ];
 
+function NavLink({
+  link,
+  isActive,
+  onClick,
+}: {
+  link: { label: string; page: Page; hash: string };
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="px-3 md:px-4 py-2 rounded-full text-sm transition-all cursor-pointer"
+      style={{
+        background: isActive
+          ? GREEN
+          : hovered
+            ? "rgba(0,230,118,0.12)"
+            : "transparent",
+        color: isActive
+          ? "#050505"
+          : hovered
+            ? "rgba(255,255,255,0.9)"
+            : "rgba(255,255,255,0.6)",
+        fontWeight: isActive ? 800 : 700,
+        boxShadow: isActive ? `0 0 14px ${GREEN}50` : "none",
+        transition: "all 0.2s",
+      }}
+      data-ocid={`appnav.${link.page}.link`}
+    >
+      {link.label}
+    </button>
+  );
+}
+
 export function AppNavbar({ currentPage }: { currentPage: Page }) {
   const { clear } = useInternetIdentity();
 
@@ -20,11 +60,20 @@ export function AppNavbar({ currentPage }: { currentPage: Page }) {
       className="sticky top-0 z-50 flex items-center justify-between px-4 md:px-8 py-3"
       style={{
         background: "rgba(5,5,5,0.92)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        borderBottom: "1px solid rgba(0,230,118,0.12)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
       }}
     >
+      {/* Subtle animated top border */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${GREEN}60 40%, ${GREEN} 50%, ${GREEN}60 60%, transparent 100%)`,
+          animation: "pulse 3s ease-in-out infinite",
+        }}
+      />
+
       {/* Logo */}
       <button
         type="button"
@@ -40,34 +89,23 @@ export function AppNavbar({ currentPage }: { currentPage: Page }) {
         >
           <Turtle size={16} style={{ color: GREEN }} />
         </div>
-        <span className="text-white font-bold text-base hidden sm:block">
+        <span className="text-white font-black text-base hidden sm:block">
           Task<span style={{ color: GREEN }}>Turtle</span>
         </span>
       </button>
 
       {/* Center Nav */}
       <nav className="flex items-center gap-1" data-ocid="appnav.nav.panel">
-        {NAV_LINKS.map((link) => {
-          const isActive = currentPage === link.page;
-          return (
-            <button
-              key={link.page}
-              type="button"
-              onClick={() => {
-                window.location.hash = link.hash;
-              }}
-              className="px-3 md:px-4 py-2 rounded-full text-sm font-semibold transition-all"
-              style={{
-                background: isActive ? GREEN : "transparent",
-                color: isActive ? "#050505" : "rgba(255,255,255,0.6)",
-                boxShadow: isActive ? `0 0 14px ${GREEN}50` : "none",
-              }}
-              data-ocid={`appnav.${link.page}.link`}
-            >
-              {link.label}
-            </button>
-          );
-        })}
+        {NAV_LINKS.map((link) => (
+          <NavLink
+            key={link.page}
+            link={link}
+            isActive={currentPage === link.page}
+            onClick={() => {
+              window.location.hash = link.hash;
+            }}
+          />
+        ))}
       </nav>
 
       {/* Logout */}
@@ -77,7 +115,7 @@ export function AppNavbar({ currentPage }: { currentPage: Page }) {
           clear();
           window.location.hash = "";
         }}
-        className="flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all hover:bg-white/10"
+        className="flex items-center gap-2 px-3 py-2 rounded-full text-sm font-bold transition-all hover:bg-white/10"
         style={{ color: "rgba(255,255,255,0.55)" }}
         data-ocid="appnav.logout.button"
       >

@@ -40,7 +40,14 @@ const SEARCH_STYLE: React.CSSProperties = {
   transition: "border-color 0.2s, box-shadow 0.2s",
 };
 
-type Tab = "overview" | "tasks" | "users" | "taskers" | "payments" | "payouts";
+type Tab =
+  | "overview"
+  | "tasks"
+  | "users"
+  | "taskers"
+  | "payments"
+  | "payouts"
+  | "profiles";
 
 function truncate(s: string, n = 10) {
   if (!s) return "—";
@@ -1491,6 +1498,333 @@ function PayoutsTab({
   );
 }
 
+// ─────────────────── Profiles Tab ───────────────────
+function ProfilesTab({
+  profileMap,
+  tasks,
+}: {
+  profileMap: Map<string, UserProfile>;
+  tasks: PublicTask[];
+}) {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<{
+    principal: string;
+    profile: UserProfile;
+  } | null>(null);
+
+  // Determine role: tasker = someone who accepted at least one task
+  const taskerPrincipals = new Set(
+    tasks.filter((t) => t.acceptor != null).map((t) => t.acceptor!.toString()),
+  );
+  const posterPrincipals = new Set(tasks.map((t) => t.poster.toString()));
+
+  const entries = Array.from(profileMap.entries());
+  const filtered = search
+    ? entries.filter(([principal, p]) => {
+        const q = search.toLowerCase();
+        return (
+          p.name?.toLowerCase().includes(q) ||
+          p.phone?.toLowerCase().includes(q) ||
+          p.location?.toLowerCase().includes(q) ||
+          p.upiId?.toLowerCase().includes(q) ||
+          principal.toLowerCase().includes(q)
+        );
+      })
+    : entries;
+
+  return (
+    <>
+      <div className="space-y-6">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by name, phone, location, UPI ID or Principal…"
+        />
+
+        {filtered.length === 0 && (
+          <div
+            className="py-16 text-center text-white/20"
+            data-ocid="profiles.empty_state"
+          >
+            {search ? "No profiles match your search" : "No profiles saved yet"}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map(([principal, profile]) => {
+            const isTasker = taskerPrincipals.has(principal);
+            const isUser = posterPrincipals.has(principal);
+            const role =
+              isTasker && isUser
+                ? "User + Tasker"
+                : isTasker
+                  ? "Tasker"
+                  : "User";
+            const roleColor = isTasker ? "#00E676" : "#60A5FA";
+            const tasksDone = tasks.filter(
+              (t) =>
+                t.acceptor?.[0]?.toString() === principal &&
+                t.status === "completed",
+            ).length;
+            const tasksPosted = tasks.filter(
+              (t) => t.poster.toString() === principal,
+            ).length;
+
+            return (
+              <motion.div
+                key={principal}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl p-5 cursor-pointer transition-all hover:scale-[1.01]"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(0,230,118,0.14)",
+                  boxShadow: "0 2px 16px rgba(0,0,0,0.3)",
+                }}
+                onClick={() => setSelected({ principal, profile })}
+                data-ocid={"profiles.card"}
+              >
+                {/* Avatar + Name */}
+                <div className="flex items-start gap-3 mb-4">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black flex-shrink-0"
+                    style={{
+                      background: `${roleColor}22`,
+                      color: roleColor,
+                      border: `1.5px solid ${roleColor}44`,
+                    }}
+                  >
+                    {(profile.name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-white font-black text-sm truncate">
+                      {profile.name || "—"}
+                    </p>
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: `${roleColor}20`, color: roleColor }}
+                    >
+                      {role}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Details grid */}
+                <div className="space-y-2 mb-4">
+                  {[
+                    { label: "Phone", value: profile.phone },
+                    { label: "Location", value: profile.location },
+                    { label: "UPI ID", value: profile.upiId },
+                  ].map(({ label, value }) => (
+                    <div
+                      key={label}
+                      className="flex justify-between items-center"
+                    >
+                      <span className="text-white/40 text-[11px] font-semibold">
+                        {label}
+                      </span>
+                      <span className="text-white/80 text-[11px] font-semibold truncate max-w-[55%]">
+                        {value || "—"}
+                      </span>
+                    </div>
+                  ))}
+                  {profile.aadharNumber && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/40 text-[11px] font-semibold">
+                        Aadhar
+                      </span>
+                      <span className="text-white/80 text-[11px] font-semibold">
+                        {`••••${profile.aadharNumber.slice(-4)}`}
+                      </span>
+                    </div>
+                  )}
+                  {profile.studentId && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/40 text-[11px] font-semibold">
+                        Student ID
+                      </span>
+                      <span className="text-white/80 text-[11px] font-semibold truncate max-w-[55%]">
+                        {profile.studentId}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div
+                  className="flex gap-3 pt-3"
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <div className="flex-1 text-center">
+                    <p className="text-[11px] text-white/30 font-semibold">
+                      Tasks Posted
+                    </p>
+                    <p
+                      className="font-black text-sm"
+                      style={{ color: "#60A5FA" }}
+                    >
+                      {tasksPosted}
+                    </p>
+                  </div>
+                  <div className="flex-1 text-center">
+                    <p className="text-[11px] text-white/30 font-semibold">
+                      Tasks Done
+                    </p>
+                    <p className="font-black text-sm" style={{ color: G }}>
+                      {tasksDone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Principal */}
+                <div
+                  className="mt-3 pt-3"
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-white/25 font-bold uppercase tracking-wider">
+                      ID
+                    </span>
+                    <span className="font-mono text-[10px] text-white/40 truncate">
+                      {principal.slice(0, 24)}…
+                    </span>
+                    <CopyBtn text={principal} />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <p className="text-white/20 text-xs text-center pt-2">
+          {filtered.length} profile{filtered.length !== 1 ? "s" : ""} found —
+          click any card to view full details
+        </p>
+      </div>
+
+      {/* Full profile modal */}
+      <AnimatePresence>
+        {selected && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              background: "rgba(0,0,0,0.8)",
+              backdropFilter: "blur(6px)",
+            }}
+            onClick={() => setSelected(null)}
+            onKeyDown={(e) => e.key === "Escape" && setSelected(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-2xl p-6 w-full max-w-md relative"
+              style={{
+                background: "rgba(8,18,12,0.98)",
+                border: "1px solid rgba(0,230,118,0.25)",
+                boxShadow: "0 0 60px rgba(0,230,118,0.12)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-black"
+                    style={{
+                      background: `${G}22`,
+                      color: G,
+                      border: `2px solid ${G}44`,
+                    }}
+                  >
+                    {(selected.profile.name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-white font-black text-lg">
+                      {selected.profile.name || "Unknown"}
+                    </h3>
+                    <p className="text-white/40 text-xs">My Profile Details</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10 text-white/40"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { label: "Full Name", value: selected.profile.name },
+                  { label: "Phone Number", value: selected.profile.phone },
+                  { label: "Location", value: selected.profile.location },
+                  { label: "UPI ID", value: selected.profile.upiId },
+                  ...(selected.profile.aadharNumber
+                    ? [
+                        {
+                          label: "Aadhar Number",
+                          value: selected.profile.aadharNumber,
+                        },
+                      ]
+                    : []),
+                  ...(selected.profile.studentId
+                    ? [
+                        {
+                          label: "Student ID",
+                          value: selected.profile.studentId,
+                        },
+                      ]
+                    : []),
+                ].map(({ label, value }) => (
+                  <div
+                    key={label}
+                    className="rounded-xl px-4 py-3 flex justify-between items-center"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(0,230,118,0.1)",
+                    }}
+                  >
+                    <p className="text-white/40 text-[11px] font-bold uppercase tracking-wider">
+                      {label}
+                    </p>
+                    <p className="text-white font-semibold text-sm max-w-[60%] text-right">
+                      {value || "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Principal ID */}
+              <div
+                className="mt-4 rounded-xl px-4 py-3"
+                style={{
+                  background: "rgba(0,230,118,0.06)",
+                  border: "1px solid rgba(0,230,118,0.2)",
+                }}
+              >
+                <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-1">
+                  Principal ID
+                </p>
+                <div className="flex items-center gap-2">
+                  <p
+                    className="font-mono text-xs break-all"
+                    style={{ color: G }}
+                  >
+                    {selected.principal}
+                  </p>
+                  <CopyBtn text={selected.principal} />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 // ─────────────────── Main ───────────────────
 function AdminTabButton({
   tabKey,
@@ -1620,6 +1954,7 @@ export function AdminDashboard() {
     { key: "taskers", label: "Taskers" },
     { key: "payments", label: "Payments" },
     { key: "payouts", label: "Payouts" },
+    { key: "profiles", label: "Profiles" },
   ];
 
   if (loading || isFetching) {
@@ -1748,6 +2083,9 @@ export function AdminDashboard() {
             )}
             {tab === "payouts" && (
               <PayoutsTab payments={payments} onMarkPaid={handleMarkPaid} />
+            )}
+            {tab === "profiles" && (
+              <ProfilesTab profileMap={profileMap} tasks={tasks} />
             )}
           </motion.div>
         </AnimatePresence>

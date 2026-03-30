@@ -1,104 +1,83 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-const img1 = "/assets/generated/carousel-banner.dim_800x500.jpg";
-const img2 = "/assets/generated/carousel-grocery.dim_800x500.jpg";
-const img3 = "/assets/generated/carousel-courier.dim_800x500.jpg";
-const img4 = "/assets/generated/carousel-homehelp.dim_800x500.jpg";
+// Import images as modules so build pipeline always includes them
+import imgBanner from "/assets/generated/carousel-banner.dim_800x500.jpg";
+import imgCourier from "/assets/generated/carousel-courier.dim_800x500.jpg";
+import imgGrocery from "/assets/generated/carousel-grocery.dim_800x500.jpg";
+import imgHomehelp from "/assets/generated/carousel-homehelp.dim_800x500.jpg";
 
-const images = [img1, img2, img3, img4];
-
-const labels = [
-  "Task Delivery",
-  "Grocery Pickup",
-  "Courier Delivery",
-  "Home Help",
+const slides = [
+  { src: imgBanner, label: "Task Delivery" },
+  { src: imgGrocery, label: "Grocery Pickup" },
+  { src: imgCourier, label: "Courier Delivery" },
+  { src: imgHomehelp, label: "Home Help" },
 ];
 
 export function HeroCarousel() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
+  const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Auto-advance every 1.8 seconds, clear on unmount
   useEffect(() => {
     if (paused) return;
-    intervalRef.current = setInterval(() => {
-      setDirection(1);
-      setCurrentIndex((prev) => (prev + 1) % images.length);
+    const id = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % slides.length);
     }, 1800);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    return () => clearInterval(id);
   }, [paused]);
-
-  const goTo = (i: number) => {
-    setDirection(i > currentIndex ? 1 : -1);
-    setCurrentIndex(i);
-  };
 
   return (
     <div
-      className="relative rounded-3xl overflow-hidden w-full aspect-[8/5] select-none shadow-[0_0_60px_rgba(0,230,118,0.15)]"
+      className="relative rounded-3xl overflow-hidden w-full select-none shadow-[0_0_60px_rgba(0,230,118,0.15)]"
+      style={{ aspectRatio: "8/5" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <AnimatePresence initial={false} custom={direction}>
-        {images.map((src, i) =>
-          i === currentIndex ? (
-            <motion.div
-              key={src}
-              custom={direction}
-              variants={{
-                enter: (d: number) => ({ opacity: 0, x: d * 40 }),
-                center: { opacity: 1, x: 0 },
-                exit: (d: number) => ({ opacity: 0, x: d * -40 }),
-              }}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-              className="absolute inset-0"
-            >
-              {/* Full-width image */}
-              <img
-                src={src}
-                alt={labels[i]}
-                className="w-full h-full object-cover"
-                draggable={false}
-              />
-
-              {/* Glossy overlays */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
-
-              {/* Label */}
-              <div className="absolute bottom-10 left-4">
-                <span className="bg-black/50 backdrop-blur border border-white/10 text-white text-xs rounded-full px-3 py-1">
-                  {labels[i]}
-                </span>
-              </div>
-            </motion.div>
-          ) : null,
-        )}
-      </AnimatePresence>
+      {/* All images stacked; only current is visible */}
+      {slides.map((slide, i) => (
+        <div
+          key={slide.src}
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{
+            opacity: i === current ? 1 : 0,
+            zIndex: i === current ? 1 : 0,
+          }}
+        >
+          <img
+            src={slide.src}
+            alt={slide.label}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+          {/* Glossy overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+          {/* Label */}
+          <div className="absolute bottom-10 left-4" style={{ zIndex: 2 }}>
+            <span className="bg-black/50 backdrop-blur border border-white/10 text-white text-xs rounded-full px-3 py-1">
+              {slide.label}
+            </span>
+          </div>
+        </div>
+      ))}
 
       {/* Dot indicators */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
-        {images.map((src, i) => (
+      <div
+        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5"
+        style={{ zIndex: 10 }}
+      >
+        {slides.map((slide, i) => (
           <button
-            key={src}
+            key={slide.src}
             type="button"
-            onClick={() => goTo(i)}
+            onClick={() => setCurrent(i)}
             className="rounded-full transition-all duration-300"
             style={{
-              width: i === currentIndex ? 20 : 6,
+              width: i === current ? 20 : 6,
               height: 6,
               backgroundColor:
-                i === currentIndex ? "#00E676" : "rgba(255,255,255,0.3)",
+                i === current ? "#00E676" : "rgba(255,255,255,0.3)",
             }}
-            aria-label={labels[i]}
+            aria-label={slide.label}
           />
         ))}
       </div>

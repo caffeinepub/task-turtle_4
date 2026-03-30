@@ -58,12 +58,16 @@ function ActiveTaskCard({
   const [advancing, setAdvancing] = useState(false);
   const { actor } = useActor();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // When tasker is entering OTP locally (stage=4), don't let polling reset the stage
+  const otpModeRef = useRef(false);
 
   // Fetch initial stage + profile, then poll stage every 3s
   useEffect(() => {
     if (!actor) return;
 
     const fetchStage = async () => {
+      // Don't override local OTP-entry mode with backend poll
+      if (otpModeRef.current) return;
       try {
         const res = await actor.getTaskStage(task.id);
         if (res) setStage(backendStageToWork(res.stage));
@@ -117,6 +121,7 @@ function ActiveTaskCard({
     try {
       const result = await actor.completeTask(task.id, otp);
       if (result) {
+        otpModeRef.current = false;
         setStage(5);
         onComplete();
       } else {
@@ -376,7 +381,10 @@ function ActiveTaskCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             type="button"
-            onClick={() => setStage(4)}
+            onClick={() => {
+              otpModeRef.current = true;
+              setStage(4);
+            }}
             className="w-full py-2.5 rounded-xl text-sm font-semibold"
             style={{
               background:

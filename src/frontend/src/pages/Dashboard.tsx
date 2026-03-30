@@ -9,7 +9,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   type PublicTask,
   type Task,
@@ -459,86 +459,64 @@ function MyTasksTab() {
   const [profileMap, setProfileMap] = useState<
     Record<string, TaskParticipantProfiles>
   >({});
-  const intervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
+  const fetchAll = useCallback(async () => {
+    if (!actor) return;
+    const t = await actor.getMyPostedTasks();
+    setTasks(t);
 
-  useEffect(() => {
-    if (!actor || isFetching) return;
-    actor
-      .getMyPostedTasks()
-      .then(async (t) => {
-        setTasks(t);
-        setLoading(false);
-
-        // fetch OTPs for accepted tasks
-        const accepted = t.filter(
-          (task) => task.status === TaskStatus.accepted,
-        );
-        const results = await Promise.all(
-          accepted.map((task) =>
-            actor.getTaskWithOtp(task.id).catch(() => null as Task | null),
-          ),
-        );
-        const map: Record<string, string> = {};
-        for (const full of results) {
-          if (full?.otp) map[full.id] = full.otp;
-        }
-        setOtpMap(map);
-      })
-      .catch(() => setLoading(false));
-  }, [actor, isFetching]);
-
-  // Poll task stages + participant profiles every 3s
-  useEffect(() => {
-    if (!actor || isFetching || tasks.length === 0) return;
-
-    const activeTasks = tasks.filter(
-      (t) => t.status === TaskStatus.accepted || t.status === TaskStatus.open,
+    const accepted = t.filter((task) => task.status === TaskStatus.accepted);
+    const nonCompleted = t.filter(
+      (task) =>
+        task.status === TaskStatus.accepted || task.status === TaskStatus.open,
     );
 
-    // Initial fetch
-    const fetchAll = async () => {
-      const stageResults = await Promise.allSettled(
-        activeTasks.map((t) => actor.getTaskStage(t.id)),
-      );
-      const newStageMap: Record<string, string> = {};
-      stageResults.forEach((r, i) => {
-        if (r.status === "fulfilled" && r.value) {
-          newStageMap[activeTasks[i].id] = r.value.stage;
-        }
-      });
-      setStageMap((prev) => ({ ...prev, ...newStageMap }));
+    const [otpResults, stageResults, profileResults] = await Promise.all([
+      Promise.allSettled(accepted.map((task) => actor.getTaskWithOtp(task.id))),
+      Promise.allSettled(
+        nonCompleted.map((task) => actor.getTaskStage(task.id)),
+      ),
+      Promise.allSettled(
+        accepted.map((task) => actor.getTaskParticipantProfiles(task.id)),
+      ),
+    ]);
 
-      const acceptedTasks = activeTasks.filter(
-        (t) => t.status === TaskStatus.accepted,
-      );
-      const profileResults = await Promise.allSettled(
-        acceptedTasks.map((t) => actor.getTaskParticipantProfiles(t.id)),
-      );
-      const newProfileMap: Record<string, TaskParticipantProfiles> = {};
-      profileResults.forEach((r, i) => {
-        if (r.status === "fulfilled" && r.value) {
-          newProfileMap[acceptedTasks[i].id] = r.value;
-        }
-      });
-      setProfileMap((prev) => ({ ...prev, ...newProfileMap }));
-    };
+    const newOtpMap: Record<string, string> = {};
+    for (const r of otpResults) {
+      if (r.status === "fulfilled" && r.value?.otp) {
+        newOtpMap[r.value.id] = r.value.otp;
+      }
+    }
+    setOtpMap((prev) => ({ ...prev, ...newOtpMap }));
 
-    fetchAll();
+    const newStageMap: Record<string, string> = {};
+    for (const [i, r] of stageResults.entries()) {
+      if (r.status === "fulfilled" && r.value) {
+        newStageMap[nonCompleted[i].id] = r.value.stage;
+      }
+    }
+    setStageMap((prev) => ({ ...prev, ...newStageMap }));
 
-    const interval = setInterval(fetchAll, 3000);
-    intervalsRef.current.push(interval);
+    const newProfileMap: Record<string, TaskParticipantProfiles> = {};
+    for (const [i, r] of profileResults.entries()) {
+      if (r.status === "fulfilled" && r.value) {
+        newProfileMap[accepted[i].id] = r.value;
+      }
+    }
+    setProfileMap((prev) => ({ ...prev, ...newProfileMap }));
+  }, [actor]);
 
-    return () => {
-      clearInterval(interval);
-    };
-  }, [actor, isFetching, tasks]);
-
-  // Cleanup all intervals on unmount
+  // Initial fetch on mount
   useEffect(() => {
-    return () => {
-      for (const id of intervalsRef.current) clearInterval(id);
-    };
-  }, []);
+    if (!actor || isFetching) return;
+    fetchAll().finally(() => setLoading(false));
+  }, [actor, isFetching, fetchAll]);
+
+  // Poll every 4s for live task + OTP updates
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    const interval = setInterval(fetchAll, 4000);
+    return () => clearInterval(interval);
+  }, [actor, isFetching, fetchAll]);
 
   async function handleCancel(taskId: string) {
     if (!actor) return;

@@ -9,7 +9,7 @@ import Array "mo:core/Array";
 import List "mo:core/List";
 import Iter "mo:core/Iter";
 import Queue "mo:core/Queue";
-import Migration "migration";
+
 
 import Random "mo:core/Random";
 import Option "mo:core/Option";
@@ -17,7 +17,7 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
 // Specify the data migration function in with-clause
-(with migration = Migration.run)
+
 actor {
   type PaymentStatus = {
     #PAID;

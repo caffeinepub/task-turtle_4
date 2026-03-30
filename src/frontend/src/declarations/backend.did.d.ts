@@ -24,11 +24,13 @@ export type PaymentStatus = { 'PAID' : null } |
 export interface PublicTask {
   'id' : string,
   'status' : TaskStatus,
+  'completedAt' : [] | [bigint],
   'title' : string,
   'createdAt' : bigint,
   'description' : string,
   'category' : string,
   'acceptor' : [] | [Principal],
+  'acceptedAt' : [] | [bigint],
   'amount' : bigint,
   'location' : string,
   'poster' : Principal,
@@ -48,6 +50,11 @@ export interface Task {
   'location' : string,
   'poster' : Principal,
 }
+export interface TaskParticipantProfiles {
+  'taskerProfile' : [] | [UserProfile],
+  'posterProfile' : [] | [UserProfile],
+}
+export interface TaskStageResponse { 'stage' : string, 'timestamp' : bigint }
 export type TaskStatus = { 'open' : null } |
   { 'completed' : null } |
   { 'accepted' : null };
@@ -68,6 +75,10 @@ export interface UserProfile {
   'phone' : string,
   'location' : string,
 }
+export interface UserProfileEntry {
+  'principal' : string,
+  'profile' : UserProfile,
+}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -80,7 +91,9 @@ export interface http_request_result {
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'acceptTask' : ActorMethod<[string], [] | [PublicTask]>,
+  'advanceTaskStage' : ActorMethod<[string, string], Result>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'cancelTask' : ActorMethod<[string], Result>,
   'completeTask' : ActorMethod<[string, string], [] | [PublicTask]>,
   'countTasks' : ActorMethod<[], bigint>,
   'createRazorpayOrder' : ActorMethod<[bigint, string, string, string], Result>,
@@ -89,6 +102,7 @@ export interface _SERVICE {
     [] | [string]
   >,
   'getAllTasks' : ActorMethod<[], Array<PublicTask>>,
+  'getAllUserProfiles' : ActorMethod<[], Array<UserProfileEntry>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMyAcceptedTasks' : ActorMethod<[], Array<PublicTask>>,
@@ -96,6 +110,11 @@ export interface _SERVICE {
   'getPaymentByTask' : ActorMethod<[string], [] | [EscrowPayment]>,
   'getPayments' : ActorMethod<[], Array<EscrowPayment>>,
   'getTask' : ActorMethod<[string], [] | [PublicTask]>,
+  'getTaskParticipantProfiles' : ActorMethod<
+    [string],
+    [] | [TaskParticipantProfiles]
+  >,
+  'getTaskStage' : ActorMethod<[string], [] | [TaskStageResponse]>,
   'getTaskWithOtp' : ActorMethod<[string], [] | [Task]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,

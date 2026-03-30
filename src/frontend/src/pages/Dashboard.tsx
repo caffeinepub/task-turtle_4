@@ -1,6 +1,5 @@
 import {
   CheckCircle2,
-  ChevronDown,
   ClipboardList,
   IndianRupee,
   Loader2,
@@ -10,13 +9,19 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { type PublicTask, type Task, TaskStatus } from "../backend";
+import { useEffect, useRef, useState } from "react";
+import {
+  type PublicTask,
+  type Task,
+  type TaskParticipantProfiles,
+  TaskStatus,
+} from "../backend";
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { getTaskerEarning } from "../utils/platformFee";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
+import { DEFAULT_TASK_IMAGE, getTaskImage } from "../utils/taskImage";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & {
@@ -95,11 +100,211 @@ function StatusBadge({ status }: { status: TaskStatus }) {
   );
 }
 
+// ── 6-Step Live Tracking Timeline ──────────────────────────────────────────
+
+const TRACKING_STEPS = [
+  { key: "posted", label: "Task Posted" },
+  { key: "accepted", label: "Accepted" },
+  { key: "on_the_way", label: "On the Way" },
+  { key: "arrived", label: "Arrived" },
+  { key: "verified", label: "Verified" },
+  { key: "delivered", label: "Delivered" },
+] as const;
+
+const STAGE_ORDER: Record<string, number> = {
+  posted: 0,
+  accepted: 1,
+  on_the_way: 2,
+  arrived: 3,
+  verified: 4,
+  delivered: 5,
+};
+
+function getStepStatus(
+  stepIndex: number,
+  currentStage: string,
+): "done" | "current" | "pending" {
+  const currentIndex = STAGE_ORDER[currentStage] ?? 0;
+  if (stepIndex < currentIndex) return "done";
+  if (stepIndex === currentIndex) return "current";
+  return "pending";
+}
+
+function LiveTrackingTimeline({
+  stage,
+  taskerInfo,
+}: {
+  stage: string;
+  taskerInfo?: { name: string; phone: string } | null;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-0 pt-3 border-t"
+      style={{ borderColor: "rgba(0,230,118,0.12)" }}
+    >
+      <p
+        className="text-xs font-bold uppercase tracking-widest mb-3"
+        style={{ color: GREEN }}
+      >
+        Live Tracking
+      </p>
+
+      <div className="relative flex flex-col">
+        {TRACKING_STEPS.map((step, i) => {
+          const status = getStepStatus(i, stage);
+          const isLast = i === TRACKING_STEPS.length - 1;
+
+          return (
+            <motion.div
+              key={step.key}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.06 }}
+              className="flex items-start gap-3 relative"
+            >
+              {/* Vertical connector line */}
+              {!isLast && (
+                <div
+                  className="absolute left-[9px] top-[20px] w-0.5"
+                  style={{
+                    height: "calc(100% - 4px)",
+                    background:
+                      status === "done"
+                        ? `linear-gradient(to bottom, ${GREEN}, ${GREEN}80)`
+                        : "rgba(255,255,255,0.08)",
+                    transition: "background 0.5s",
+                  }}
+                />
+              )}
+
+              {/* Circle indicator */}
+              <div className="relative z-10 shrink-0 mt-0.5">
+                {status === "done" ? (
+                  <div
+                    className="w-[18px] h-[18px] rounded-full flex items-center justify-center"
+                    style={{
+                      background: GREEN,
+                      boxShadow: `0 0 8px ${GREEN}80`,
+                    }}
+                  >
+                    <CheckCircle2 size={10} color="#000" strokeWidth={3} />
+                  </div>
+                ) : status === "current" ? (
+                  <div
+                    className="w-[18px] h-[18px] rounded-full relative"
+                    style={{
+                      background: `${GREEN}30`,
+                      border: `2px solid ${GREEN}`,
+                      boxShadow: `0 0 12px ${GREEN}60`,
+                      animation: "pulse 1.5s infinite",
+                    }}
+                  >
+                    <div
+                      className="absolute inset-[3px] rounded-full"
+                      style={{ background: GREEN }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="w-[18px] h-[18px] rounded-full"
+                    style={{
+                      border: "2px solid rgba(255,255,255,0.15)",
+                      background: "rgba(255,255,255,0.03)",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Step label + badge */}
+              <div className="flex items-center justify-between flex-1 pb-4">
+                <span
+                  className="text-xs font-semibold"
+                  style={{
+                    color:
+                      status === "pending"
+                        ? "rgba(255,255,255,0.35)"
+                        : status === "current"
+                          ? "#fff"
+                          : "rgba(255,255,255,0.75)",
+                  }}
+                >
+                  {step.label}
+                </span>
+                {status === "done" && (
+                  <span
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "rgba(0,230,118,0.15)",
+                      color: GREEN,
+                      border: `1px solid ${GREEN}40`,
+                    }}
+                  >
+                    Done ✓
+                  </span>
+                )}
+                {status === "current" && (
+                  <span
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "rgba(245,158,11,0.15)",
+                      color: AMBER,
+                      border: `1px solid ${AMBER}50`,
+                      animation: "pulse 1.5s infinite",
+                    }}
+                  >
+                    In Progress
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Tasker info */}
+      {taskerInfo && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 mt-1 px-3 py-2.5 rounded-xl"
+          style={{
+            background: "rgba(0,230,118,0.07)",
+            border: `1px solid ${GREEN}25`,
+          }}
+        >
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: `${GREEN}20`, border: `1px solid ${GREEN}40` }}
+          >
+            <Phone size={12} style={{ color: GREEN }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white truncate">
+              Tasker: {taskerInfo.name}
+            </p>
+            <p className="text-xs" style={{ color: GREEN }}>
+              📞 {taskerInfo.phone}
+            </p>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 function TaskCard({
   task,
   action,
   footer,
-}: { task: PublicTask; action?: React.ReactNode; footer?: React.ReactNode }) {
+  trackingStage,
+  taskerInfo,
+}: {
+  task: PublicTask;
+  action?: React.ReactNode;
+  footer?: React.ReactNode;
+  trackingStage?: string;
+  taskerInfo?: { name: string; phone: string } | null;
+}) {
   return (
     <div
       className="rounded-xl p-5 flex flex-col gap-3"
@@ -109,6 +314,20 @@ function TaskCard({
         backdropFilter: "blur(12px)",
       }}
     >
+      {/* Task image */}
+      <img
+        src={getTaskImage(task.title, task.category, task.description ?? "")}
+        alt={task.title}
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = DEFAULT_TASK_IMAGE;
+        }}
+        style={{
+          width: "100%",
+          height: "180px",
+          objectFit: "cover",
+          borderRadius: "12px",
+        }}
+      />
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -156,8 +375,10 @@ function TaskCard({
         )}
       </div>
 
-      {/* Static progress timeline */}
-      {task.status !== TaskStatus.completed && (
+      {/* Live 6-step tracking timeline or static progress */}
+      {task.status !== TaskStatus.completed && trackingStage ? (
+        <LiveTrackingTimeline stage={trackingStage} taskerInfo={taskerInfo} />
+      ) : task.status !== TaskStatus.completed ? (
         <div
           className="flex flex-col gap-1.5 pt-2 border-t"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -188,7 +409,9 @@ function TaskCard({
                   background: step.done
                     ? `${GREEN}25`
                     : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${step.done ? `${GREEN}50` : "rgba(255,255,255,0.1)"}`,
+                  border: `1px solid ${
+                    step.done ? `${GREEN}50` : "rgba(255,255,255,0.1)"
+                  }`,
                 }}
               >
                 {step.done && (
@@ -211,7 +434,7 @@ function TaskCard({
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       <div className="flex items-center justify-between pt-1">
         <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
@@ -232,6 +455,11 @@ function MyTasksTab() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [otpMap, setOtpMap] = useState<Record<string, string>>({});
+  const [stageMap, setStageMap] = useState<Record<string, string>>({});
+  const [profileMap, setProfileMap] = useState<
+    Record<string, TaskParticipantProfiles>
+  >({});
+  const intervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
   useEffect(() => {
     if (!actor || isFetching) return;
@@ -240,6 +468,7 @@ function MyTasksTab() {
       .then(async (t) => {
         setTasks(t);
         setLoading(false);
+
         // fetch OTPs for accepted tasks
         const accepted = t.filter(
           (task) => task.status === TaskStatus.accepted,
@@ -253,11 +482,63 @@ function MyTasksTab() {
         for (const full of results) {
           if (full?.otp) map[full.id] = full.otp;
         }
-
         setOtpMap(map);
       })
       .catch(() => setLoading(false));
   }, [actor, isFetching]);
+
+  // Poll task stages + participant profiles every 3s
+  useEffect(() => {
+    if (!actor || isFetching || tasks.length === 0) return;
+
+    const activeTasks = tasks.filter(
+      (t) => t.status === TaskStatus.accepted || t.status === TaskStatus.open,
+    );
+
+    // Initial fetch
+    const fetchAll = async () => {
+      const stageResults = await Promise.allSettled(
+        activeTasks.map((t) => actor.getTaskStage(t.id)),
+      );
+      const newStageMap: Record<string, string> = {};
+      stageResults.forEach((r, i) => {
+        if (r.status === "fulfilled" && r.value) {
+          newStageMap[activeTasks[i].id] = r.value.stage;
+        }
+      });
+      setStageMap((prev) => ({ ...prev, ...newStageMap }));
+
+      const acceptedTasks = activeTasks.filter(
+        (t) => t.status === TaskStatus.accepted,
+      );
+      const profileResults = await Promise.allSettled(
+        acceptedTasks.map((t) => actor.getTaskParticipantProfiles(t.id)),
+      );
+      const newProfileMap: Record<string, TaskParticipantProfiles> = {};
+      profileResults.forEach((r, i) => {
+        if (r.status === "fulfilled" && r.value) {
+          newProfileMap[acceptedTasks[i].id] = r.value;
+        }
+      });
+      setProfileMap((prev) => ({ ...prev, ...newProfileMap }));
+    };
+
+    fetchAll();
+
+    const interval = setInterval(fetchAll, 3000);
+    intervalsRef.current.push(interval);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [actor, isFetching, tasks]);
+
+  // Cleanup all intervals on unmount
+  useEffect(() => {
+    return () => {
+      for (const id of intervalsRef.current) clearInterval(id);
+    };
+  }, []);
 
   async function handleCancel(taskId: string) {
     if (!actor) return;
@@ -309,6 +590,14 @@ function MyTasksTab() {
         const isOpen = task.status === TaskStatus.open;
         const isAccepted = task.status === TaskStatus.accepted;
         const isCompleted = task.status === TaskStatus.completed;
+        const stage = stageMap[task.id];
+        const profiles = profileMap[task.id];
+        const taskerInfo = profiles?.taskerProfile
+          ? {
+              name: profiles.taskerProfile.name,
+              phone: profiles.taskerProfile.phone,
+            }
+          : null;
 
         return (
           <motion.div
@@ -320,6 +609,11 @@ function MyTasksTab() {
           >
             <TaskCard
               task={task}
+              trackingStage={
+                stage ||
+                (isAccepted ? "accepted" : isOpen ? "posted" : undefined)
+              }
+              taskerInfo={taskerInfo}
               action={
                 isCompleted ? (
                   <div
@@ -394,7 +688,9 @@ function MyTasksTab() {
                       {cancelling === task.id ? (
                         <Loader2 size={12} className="animate-spin" />
                       ) : null}
-                      {cancelling === task.id ? "Cancelling…" : "Cancel Task"}
+                      {cancelling === task.id
+                        ? "Cancelling\u2026"
+                        : "Cancel Task"}
                     </button>
                   )}
                 </div>
@@ -705,7 +1001,7 @@ function PostTaskTab() {
         <textarea
           id="pt-desc"
           rows={3}
-          placeholder="Describe what you need done…"
+          placeholder="Describe what you need done\u2026"
           value={fields.description}
           onChange={(e) =>
             setFields((p) => ({ ...p, description: e.target.value }))
@@ -837,8 +1133,8 @@ function PostTaskTab() {
             <input
               id="pt-amount"
               type="number"
-              min="1"
-              placeholder="0"
+              min={0}
+              placeholder="e.g. 150"
               value={fields.amount}
               onChange={(e) => {
                 setFields((p) => ({ ...p, amount: e.target.value }));
@@ -849,11 +1145,6 @@ function PostTaskTab() {
               data-ocid="posttask.input"
             />
           </div>
-          {surgePrice !== null && (
-            <p className="text-xs" style={{ color: AMBER }}>
-              Surge price: ₹{surgePrice} (+20%)
-            </p>
-          )}
           {errors.amount && (
             <p
               className="text-xs"
@@ -866,55 +1157,85 @@ function PostTaskTab() {
         </div>
       </div>
 
-      {/* Category */}
-      <div className="flex flex-col gap-1.5">
-        <label
+      {/* Tip */}
+      <div className="flex flex-col gap-2">
+        <p
           className="text-xs font-medium uppercase tracking-wide"
           style={{ color: "rgba(255,255,255,0.5)" }}
-          htmlFor="pt-category"
+        >
+          Tip your Tasker (optional)
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          {TIP_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() =>
+                setFields((p) => ({
+                  ...p,
+                  tip: p.tip === opt.value ? null : opt.value,
+                }))
+              }
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                background:
+                  fields.tip === opt.value
+                    ? `${GREEN}20`
+                    : "rgba(255,255,255,0.05)",
+                border: `1px solid ${
+                  fields.tip === opt.value
+                    ? `${GREEN}50`
+                    : "rgba(255,255,255,0.1)"
+                }`,
+                color:
+                  fields.tip === opt.value ? GREEN : "rgba(255,255,255,0.5)",
+              }}
+              data-ocid="posttask.toggle"
+            >
+              +{opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Category */}
+      <div className="flex flex-col gap-2">
+        <p
+          className="text-xs font-medium uppercase tracking-wide"
+          style={{ color: "rgba(255,255,255,0.5)" }}
         >
           Category <span style={{ color: "#f87171" }}>*</span>
-        </label>
-        <div className="relative">
-          <select
-            id="pt-category"
-            value={fields.category}
-            onChange={(e) => {
-              setFields((p) => ({
-                ...p,
-                category: e.target.value as Category,
-              }));
-              setErrors((p) => ({ ...p, category: "" }));
-            }}
-            className="w-full appearance-none rounded-xl px-4 py-3 pr-10 text-sm outline-none transition-all"
-            style={{
-              ...inputBase,
-              color: fields.category ? "#fff" : "rgba(255,255,255,0.35)",
-            }}
-            data-ocid="posttask.select"
-          >
-            <option
-              value=""
-              disabled
-              style={{ background: "#000000", color: "rgba(255,255,255,0.35)" }}
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => {
+                setFields((p) => ({ ...p, category: cat.value }));
+                setErrors((p) => ({ ...p, category: "" }));
+              }}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                background:
+                  fields.category === cat.value
+                    ? `${GREEN}20`
+                    : "rgba(255,255,255,0.05)",
+                border: `1px solid ${
+                  fields.category === cat.value
+                    ? `${GREEN}50`
+                    : "rgba(255,255,255,0.1)"
+                }`,
+                color:
+                  fields.category === cat.value
+                    ? GREEN
+                    : "rgba(255,255,255,0.5)",
+              }}
+              data-ocid="posttask.toggle"
             >
-              Select a category
-            </option>
-            {CATEGORIES.map((c) => (
-              <option
-                key={c.value}
-                value={c.value}
-                style={{ background: "#000000", color: "#fff" }}
-              >
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={15}
-            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "rgba(255,255,255,0.35)" }}
-          />
+              {cat.label}
+            </button>
+          ))}
         </div>
         {errors.category && (
           <p
@@ -927,123 +1248,99 @@ function PostTaskTab() {
         )}
       </div>
 
-      {/* Tip */}
-      <div className="flex flex-col gap-2">
-        <span
-          className="text-xs font-medium uppercase tracking-wide"
-          style={{ color: "rgba(255,255,255,0.5)" }}
+      {/* Price summary */}
+      {finalAmount > 0 && (
+        <div
+          className="flex items-center justify-between px-4 py-3 rounded-xl"
+          style={{
+            background: "rgba(0,230,118,0.06)",
+            border: `1px solid ${GREEN}20`,
+          }}
         >
-          Tip (optional)
-        </span>
-        <div className="flex gap-2">
-          {TIP_OPTIONS.map(({ label, value }) => {
-            const sel = fields.tip === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() =>
-                  setFields((p) => ({
-                    ...p,
-                    tip: p.tip === value ? null : value,
-                  }))
-                }
-                className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all"
-                style={{
-                  background: sel
-                    ? "rgba(0,230,118,0.18)"
-                    : "rgba(255,255,255,0.04)",
-                  border: sel
-                    ? `1.5px solid ${GREEN}60`
-                    : "1px solid rgba(255,255,255,0.1)",
-                  color: sel ? GREEN : "rgba(255,255,255,0.55)",
-                }}
-                data-ocid="posttask.toggle"
-              >
-                {label}
-              </button>
-            );
-          })}
+          <div className="flex flex-col gap-0.5">
+            <span
+              className="text-xs"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              Base ₹{baseAmount}
+              {surgePrice ? ` + 20% surge = ₹${surgePrice}` : ""}
+              {fields.tip ? ` + ₹${fields.tip} tip` : ""}
+            </span>
+            <span className="text-base font-bold" style={{ color: GREEN }}>
+              Total: ₹{finalAmount}
+            </span>
+          </div>
+          {surgeActive && (
+            <Zap size={18} fill={AMBER} style={{ color: AMBER }} />
+          )}
         </div>
-      </div>
-
-      {/* Escrow note */}
-      <div
-        className="flex items-start gap-2 px-4 py-3 rounded-xl"
-        style={{
-          background: "rgba(0,230,118,0.05)",
-          border: `1px solid ${GREEN}18`,
-        }}
-      >
-        <IndianRupee
-          size={14}
-          style={{ color: `${GREEN}90`, flexShrink: 0, marginTop: 1 }}
-        />
-        <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-          Payment is collected via Razorpay and held in escrow. Released only
-          after task completion.
-        </p>
-      </div>
+      )}
 
       {submitError && (
-        <div
-          className="rounded-xl px-4 py-3 text-sm"
+        <p
+          className="text-xs px-3 py-2 rounded-lg"
           style={{
             background: "rgba(239,68,68,0.1)",
-            border: "1px solid rgba(239,68,68,0.3)",
+            border: "1px solid rgba(239,68,68,0.25)",
             color: "#f87171",
           }}
           data-ocid="posttask.error_state"
         >
           {submitError}
-        </div>
+        </p>
       )}
 
-      <motion.button
+      <button
         type="submit"
-        data-ocid="posttask.submit_button"
         disabled={isLoading}
-        whileHover={isLoading ? {} : { scale: 1.01 }}
-        whileTap={isLoading ? {} : { scale: 0.98 }}
-        className="w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+        className="py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
         style={{
           background:
             "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
           color: "#000000",
-          boxShadow: isLoading
-            ? "none"
-            : "0 0 24px rgba(0,230,118,0.55), 0 4px 20px rgba(0,230,118,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
+          boxShadow: `0 0 20px ${GREEN}30`,
         }}
+        data-ocid="posttask.submit_button"
       >
-        {isLoading && <Loader2 size={16} className="animate-spin" />}
-        {isLoading
-          ? "Processing…"
-          : finalAmount > 0
-            ? `Pay ₹${finalAmount} & Post Task`
-            : "Pay & Post Task"}
-      </motion.button>
+        {isLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 size={16} className="animate-spin" />
+            Processing\u2026
+          </span>
+        ) : (
+          `Pay ₹${finalAmount || "—"} & Post Task`
+        )}
+      </button>
     </form>
   );
 }
 
-// ── Find Tasks Tab ───────────────────────────────────────────────────────────
+// ── Find Tasks Tab ────────────────────────────────────────────────────────────
 function FindTasksTab() {
   const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const [tasks, setTasks] = useState<PublicTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set());
+  const myPrincipal = identity?.getPrincipal().toString();
 
   useEffect(() => {
     if (!actor || isFetching) return;
     actor
       .getAllTasks()
       .then((t) => {
-        setTasks(t.filter((task) => task.status === TaskStatus.open));
+        setTasks(
+          t.filter(
+            (task) =>
+              task.status === TaskStatus.open &&
+              task.poster.toString() !== myPrincipal,
+          ),
+        );
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [actor, isFetching]);
+  }, [actor, isFetching, myPrincipal]);
 
   async function handleAccept(taskId: string) {
     if (!actor) return;
@@ -1053,7 +1350,7 @@ function FindTasksTab() {
       setAcceptedIds((prev) => new Set([...prev, taskId]));
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
     } catch (_) {
-      // silently handle
+      // ignore
     } finally {
       setAccepting(null);
     }
@@ -1070,253 +1367,204 @@ function FindTasksTab() {
     );
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Banner */}
+  if (tasks.length === 0) {
+    return (
       <div
-        className="rounded-xl p-5"
-        style={{
-          background: "rgba(0,230,118,0.05)",
-          border: `1px solid ${GREEN}18`,
-        }}
+        className="flex flex-col items-center justify-center py-16 text-center"
+        data-ocid="findtasks.empty_state"
       >
-        <p className="text-white font-semibold text-sm">
-          Earn money by completing tasks near you
+        <ClipboardList size={36} style={{ color: "rgba(255,255,255,0.15)" }} />
+        <p className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+          No tasks available right now
         </p>
-        <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
-          Accept tasks posted by others. Manage accepted tasks in Tasker Hub.
+        <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>
+          Check back later — new tasks are posted frequently
         </p>
       </div>
+    );
+  }
 
-      <div>
-        <p className="text-sm font-semibold text-white mb-3">
-          Available Tasks Near You
-        </p>
-        {tasks.length === 0 ? (
-          <div
-            className="flex flex-col items-center justify-center py-12 text-center"
-            data-ocid="findtasks.empty_state"
+  return (
+    <div className="flex flex-col gap-4" data-ocid="findtasks.list">
+      {tasks.map((task, i) => {
+        const earning = getTaskerEarning(Number(task.amount));
+        const isAccepting = accepting === task.id;
+        const isAccepted = acceptedIds.has(task.id);
+        return (
+          <motion.div
+            key={task.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            data-ocid={`findtasks.item.${i + 1}`}
           >
-            <MapPin size={32} style={{ color: "rgba(255,255,255,0.15)" }} />
-            <p
-              className="mt-3 text-sm"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+            <div
+              className="rounded-xl p-5 flex flex-col gap-3"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(0,230,118,0.1)",
+                backdropFilter: "blur(12px)",
+              }}
             >
-              No open tasks available right now
-            </p>
-            <p
-              className="text-xs mt-1"
-              style={{ color: "rgba(255,255,255,0.25)" }}
-            >
-              Check back soon!
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4" data-ocid="findtasks.list">
-            {tasks.map((task, i) => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                data-ocid={`findtasks.item.${i + 1}`}
-              >
-                <TaskCard
-                  task={task}
-                  action={
-                    <div className="flex flex-col items-end gap-2">
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ color: "#00E676" }}
-                      >
-                        You earn ₹{getTaskerEarning(Number(task.amount))}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {task.description?.includes("Contact:") && (
-                          <a
-                            href={`tel:${task.description.replace("Contact: ", "")}`}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                            style={{
-                              background: `${GREEN}15`,
-                              color: GREEN,
-                              border: `1px solid ${GREEN}35`,
-                            }}
-                          >
-                            <Phone size={11} />
-                            Call Customer
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleAccept(task.id)}
-                          disabled={
-                            accepting === task.id || acceptedIds.has(task.id)
-                          }
-                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all disabled:opacity-60"
-                          style={{
-                            background:
-                              "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
-                            color: "#000000",
-                            boxShadow: `0 0 12px ${GREEN}35`,
-                          }}
-                          data-ocid={`findtasks.primary_button.${i + 1}`}
-                        >
-                          {accepting === task.id ? (
-                            <Loader2 size={11} className="animate-spin" />
-                          ) : null}
-                          {acceptedIds.has(task.id)
-                            ? "Accepted!"
-                            : "Accept & Earn"}
-                        </button>
-                      </div>
-                    </div>
-                  }
-                />
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
+              <img
+                src={getTaskImage(
+                  task.title,
+                  task.category,
+                  task.description ?? "",
+                )}
+                alt={task.title}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    DEFAULT_TASK_IMAGE;
+                }}
+                style={{
+                  width: "100%",
+                  height: "160px",
+                  objectFit: "cover",
+                  borderRadius: "10px",
+                }}
+              />
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-semibold text-sm">
+                    {task.title}
+                  </h3>
+                  {task.description && (
+                    <p
+                      className="text-xs mt-1"
+                      style={{ color: "rgba(255,255,255,0.45)" }}
+                    >
+                      {task.description}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-base font-bold" style={{ color: GREEN }}>
+                    ₹{task.amount.toString()}
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: "rgba(0,230,118,0.7)" }}
+                  >
+                    You earn ₹{earning}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {task.category && (
+                  <div className="flex items-center gap-1.5">
+                    <Tag size={12} style={{ color: "rgba(255,255,255,0.4)" }} />
+                    <span
+                      className="text-xs"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      {task.category}
+                    </span>
+                  </div>
+                )}
+                {task.location && (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin
+                      size={12}
+                      style={{ color: "rgba(255,255,255,0.4)" }}
+                    />
+                    <span
+                      className="text-xs"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      {task.location}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {isAccepted ? (
+                <div
+                  className="flex items-center gap-2 py-2.5 rounded-xl justify-center text-sm font-bold"
+                  style={{ color: GREEN }}
+                >
+                  <CheckCircle2 size={15} /> Accepted! Check Tasker Dashboard
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleAccept(task.id)}
+                  disabled={isAccepting}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                    color: "#000000",
+                    boxShadow: `0 0 14px ${GREEN}30`,
+                  }}
+                  data-ocid={`findtasks.primary_button.${i + 1}`}
+                >
+                  {isAccepting ? (
+                    <Loader2 size={14} className="animate-spin inline mr-1.5" />
+                  ) : null}
+                  {isAccepting ? "Accepting\u2026" : "Accept Task"}
+                </button>
+              )}
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
 
-// ── Dashboard ────────────────────────────────────────────────────────────────
-function DashTabButton({
-  id,
-  label,
-  count,
-  activeTab,
-  onSelect,
-}: {
-  id: Tab;
-  label: string;
-  count: number | null;
-  activeTab: Tab;
-  onSelect: (id: Tab) => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const isActive = activeTab === id;
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(id)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm transition-all cursor-pointer"
-      style={{
-        background: isActive
-          ? GREEN
-          : hovered
-            ? "rgba(0,230,118,0.10)"
-            : "transparent",
-        color: isActive
-          ? "#000000"
-          : hovered
-            ? "rgba(255,255,255,0.9)"
-            : "rgba(255,255,255,0.5)",
-        fontWeight: isActive ? 800 : 700,
-        boxShadow: isActive ? `0 0 16px ${GREEN}40` : "none",
-        transition: "all 0.2s",
-      }}
-      data-ocid={`dashboard.${id}.tab`}
-    >
-      {label}
-      {count !== null && count > 0 && (
-        <span
-          className="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold"
-          style={{
-            background: isActive ? "rgba(0,0,0,0.2)" : `${GREEN}25`,
-            color: isActive ? "#000000" : GREEN,
-          }}
-        >
-          {count}
-        </span>
-      )}
-    </button>
-  );
-}
-
-export function Dashboard() {
-  useInternetIdentity();
-  const { actor } = useActor();
+// ── Dashboard Page ────────────────────────────────────────────────────────────
+export function DashboardPage() {
+  const { identity } = useInternetIdentity();
   const [tab, setTab] = useState<Tab>("my-tasks");
-  const [myTasksCount, setMyTasksCount] = useState(0);
-  const [openTasksCount, setOpenTasksCount] = useState(0);
 
-  useEffect(() => {
-    if (!actor) return;
-    Promise.all([
-      actor.getMyPostedTasks().catch(() => [] as PublicTask[]),
-      actor.getAllTasks().catch(() => [] as PublicTask[]),
-      actor.getCallerUserProfile().catch(() => null),
-    ]).then(([mine, all, _profile]) => {
-      setMyTasksCount(mine.length);
-      setOpenTasksCount(all.filter((t) => t.status === TaskStatus.open).length);
-    });
-  }, [actor]);
-
-  const TABS = [
-    { id: "my-tasks" as Tab, label: "My Tasks", count: myTasksCount },
-    { id: "post-task" as Tab, label: "Post Task", count: null },
-    { id: "find-tasks" as Tab, label: "Find Tasks", count: openTasksCount },
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "my-tasks", label: "My Tasks" },
+    { id: "post-task", label: "Post Task" },
+    { id: "find-tasks", label: "Find Tasks" },
   ];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
-      {/* Ambient glows */}
-      <div
-        className="fixed top-0 left-0 w-[600px] h-[600px] pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at 0% 0%, rgba(0,230,118,0.07) 0%, transparent 60%)",
-          zIndex: 0,
-        }}
-      />
-      <div
-        className="fixed bottom-0 right-0 w-[400px] h-[400px] pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at 100% 100%, rgba(0,230,118,0.05) 0%, transparent 60%)",
-          zIndex: 0,
-        }}
-      />
-
       <AppNavbar currentPage="dashboard" />
 
-      {/* Main */}
-      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {/* Heading */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold">
-            <span className="text-white">Customer </span>
-            <span style={{ color: GREEN }}>Dashboard</span>
+      <main className="max-w-3xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-white">
+            Welcome back{" "}
+            <span style={{ color: GREEN }}>
+              {identity?.getPrincipal().toString().slice(0, 8)}\u2026
+            </span>
           </h1>
           <p
-            className="text-sm mt-1.5"
+            className="text-sm mt-1"
             style={{ color: "rgba(255,255,255,0.4)" }}
           >
-            Manage your tasks, post new ones, and find work nearby.
+            Manage your tasks and earnings
           </p>
         </div>
 
-        {/* Tab pill switcher */}
+        {/* Tab bar */}
         <div
-          className="flex items-center gap-1 p-1 rounded-2xl mb-8 w-fit"
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(0,230,118,0.1)",
-          }}
+          className="flex gap-1 p-1 rounded-xl mb-6"
+          style={{ background: "rgba(255,255,255,0.05)" }}
+          data-ocid="dashboard.tab"
         >
-          {TABS.map(({ id, label, count }) => (
-            <DashTabButton
-              key={id}
-              id={id}
-              label={label}
-              count={count}
-              activeTab={tab}
-              onSelect={setTab}
-            />
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: tab === t.id ? GREEN : "transparent",
+                color: tab === t.id ? "#000" : "rgba(255,255,255,0.5)",
+                boxShadow: tab === t.id ? `0 0 12px ${GREEN}40` : "none",
+              }}
+              data-ocid={`dashboard.${t.id}.tab`}
+            >
+              {t.label}
+            </button>
           ))}
         </div>
 
@@ -1324,10 +1572,10 @@ export function Dashboard() {
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.18 }}
           >
             {tab === "my-tasks" && <MyTasksTab />}
             {tab === "post-task" && <PostTaskTab />}
@@ -1335,24 +1583,8 @@ export function Dashboard() {
           </motion.div>
         </AnimatePresence>
       </main>
-
-      {/* Footer */}
-      <footer
-        className="relative z-10 border-t py-6 px-4 text-center mt-8"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}
-      >
-        <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
-          © {new Date().getFullYear()}. Built with ♥ using{" "}
-          <a
-            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "rgba(0,230,118,0.5)" }}
-          >
-            caffeine.ai
-          </a>
-        </p>
-      </footer>
     </div>
   );
 }
+
+export { DashboardPage as Dashboard };

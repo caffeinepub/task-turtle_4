@@ -562,13 +562,13 @@ function AllTasksTab({
                       {formatDateTime(t.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-white/30 text-xs whitespace-nowrap">
-                      {t.acceptedAt && t.acceptedAt.length > 0
-                        ? formatDateTime(t.acceptedAt[0])
+                      {t.acceptedAt != null
+                        ? formatDateTime(t.acceptedAt!)
                         : "—"}
                     </td>
                     <td className="px-4 py-3 text-white/30 text-xs whitespace-nowrap">
-                      {t.completedAt && t.completedAt.length > 0
-                        ? formatDateTime(t.completedAt[0])
+                      {t.completedAt != null
+                        ? formatDateTime(t.completedAt!)
                         : "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -1887,20 +1887,24 @@ export function AdminDashboard() {
 
   async function loadData() {
     if (!actor) return;
-    const [adminCheck, allTasks, allPayments, allProfiles] = await Promise.all([
+    // Fetch profiles separately so a permission error doesn't crash everything
+    const [adminCheck, allTasks, allPayments] = await Promise.all([
       actor.isCallerAdmin(),
       actor.getAllTasks(),
       actor.getPayments(),
-      (
-        actor as unknown as {
-          getAllUserProfiles?: () => Promise<UserProfileEntry[]>;
-        }
-      ).getAllUserProfiles?.() ?? Promise.resolve([] as UserProfileEntry[]),
     ]);
     setIsAdmin(adminCheck);
     setTasks(allTasks);
     setPayments(allPayments);
-    setProfileMap(new Map(allProfiles.map((e) => [e.principal, e.profile])));
+
+    // getAllUserProfiles requires admin role — fetch separately with error handling
+    try {
+      const allProfiles = await actor.getAllUserProfiles();
+      setProfileMap(new Map(allProfiles.map((e) => [e.principal, e.profile])));
+    } catch {
+      // If user profiles can't be fetched (e.g. not yet admin), keep existing map
+      console.warn("Could not load user profiles");
+    }
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadData intentionally excluded

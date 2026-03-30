@@ -367,6 +367,10 @@ export function TasksPage() {
                         src={task.image}
                         alt={task.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            "/assets/generated/task-default.dim_400x240.jpg";
+                        }}
                       />
                       <div className="absolute top-3 right-3">
                         {surgeActive ? (

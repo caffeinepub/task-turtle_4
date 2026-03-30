@@ -9,6 +9,7 @@ import Array "mo:core/Array";
 import List "mo:core/List";
 import Iter "mo:core/Iter";
 import Queue "mo:core/Queue";
+import Migration "migration";
 
 import Random "mo:core/Random";
 import Option "mo:core/Option";
@@ -16,7 +17,7 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
 // Specify the data migration function in with-clause
-
+(with migration = Migration.run)
 actor {
   type PaymentStatus = {
     #PAID;
@@ -73,6 +74,31 @@ actor {
     createdAt : Int;
   };
 
+  // Task stage tracking
+  type TaskStage = {
+    #posted;
+    #accepted;
+    #on_the_way;
+    #arrived;
+    #verified;
+    #delivered;
+  };
+
+  type TaskStageRecord = {
+    stage : TaskStage;
+    timestamp : Int;
+  };
+
+  public type TaskStageResponse = {
+    stage : Text;
+    timestamp : Int;
+  };
+
+  public type TaskParticipantProfiles = {
+    posterProfile : ?UserProfile;
+    taskerProfile : ?UserProfile;
+  };
+
   // Timestamps stored separately to avoid stable variable migration
   type TaskTimestamps = {
     acceptedAt : ?Int;
@@ -104,6 +130,7 @@ actor {
   let tasks = Map.empty<Text, Task>();
   // Separate map for task timestamps — avoids breaking stable Task type
   let taskTimestamps = Map.empty<Text, TaskTimestamps>();
+  let taskStages = Map.empty<Text, TaskStageRecord>();
 
   // Razorpay Basic Auth: base64(key_id:key_secret)
   let RAZORPAY_BASIC_AUTH = "cnpwX2xpdmVfU1JOYlR3eUVtelFTdk86MEszRTBxMFJJSmhoNDROUUw0YmZnSW5m";
@@ -288,6 +315,8 @@ actor {
       createdAt = Time.now();
     };
     tasks.add(taskId, newTask);
+    // Set initial stage
+    taskStages.add(taskId, { stage = #posted; timestamp = Time.now() });
     ?taskId;
   };
 
@@ -309,6 +338,8 @@ actor {
             let prevTs = taskTimestamps.get(taskId);
             let prevCompleted : ?Int = switch (prevTs) { case (?t) { t.completedAt }; case (null) { null } };
             taskTimestamps.add(taskId, { acceptedAt = ?Time.now(); completedAt = prevCompleted });
+            // Set stage to accepted
+            taskStages.add(taskId, { stage = #accepted; timestamp = Time.now() });
             ?toPublicTask(updatedTask);
           };
           case (#accepted, _) { Runtime.trap("Task is not open") };
@@ -316,6 +347,62 @@ actor {
         };
       };
     };
+  };
+
+  // Helper function to get stage order for validation
+  func getStageOrder(stage : TaskStage) : Nat {
+    switch (stage) {
+      case (#posted) { 0 };
+      case (#accepted) { 1 };
+      case (#on_the_way) { 2 };
+      case (#arrived) { 3 };
+      case (#verified) { 4 };
+      case (#delivered) { 5 };
+    };
+  };
+
+  // Move through stages: tasker can go to on_the_way, arrived, and verified
+  public shared ({ caller }) func advanceTaskStage(taskId : Text, newStage : Text) : async Result {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can advance task stage");
+    };
+    let task = switch (tasks.get(taskId)) {
+      case (null) { Runtime.trap("Task not found") };
+      case (?task) { task };
+    };
+    // Only tasker (acceptor) can call this
+    if (task.acceptor != ?caller) {
+      Runtime.trap("Unauthorized: Only the tasker can advance the stage");
+    };
+
+    // Get current stage
+    let currentStageRecord = switch (taskStages.get(taskId)) {
+      case (null) { Runtime.trap("Task stage not found") };
+      case (?record) { record };
+    };
+
+    // Parse and validate new stage
+    let newStageVariant = switch (newStage) {
+      case ("on_the_way") { #on_the_way };
+      case ("arrived") { #arrived };
+      case ("verified") { #verified };
+      case (_) { Runtime.trap("Invalid stage: only on_the_way, arrived, and verified are allowed") };
+    };
+
+    // Validate stage progression (must advance forward only)
+    let currentOrder = getStageOrder(currentStageRecord.stage);
+    let newOrder = getStageOrder(newStageVariant);
+    
+    if (newOrder <= currentOrder) {
+      return #err("Stage must advance forward only");
+    };
+
+    // Update stage
+    taskStages.add(taskId, {
+      stage = newStageVariant;
+      timestamp = Time.now();
+    });
+    #ok;
   };
 
   public shared ({ caller }) func completeTask(taskId : Text, submittedOtp : Text) : async ?PublicTask {
@@ -341,6 +428,8 @@ actor {
     let prevTs = taskTimestamps.get(taskId);
     let prevAccepted : ?Int = switch (prevTs) { case (?t) { t.acceptedAt }; case (null) { null } };
     taskTimestamps.add(taskId, { acceptedAt = prevAccepted; completedAt = ?Time.now() });
+    // Set stage to delivered
+    taskStages.add(taskId, { stage = #delivered; timestamp = Time.now() });
     ?toPublicTask(updatedTask);
   };
 
@@ -359,6 +448,7 @@ actor {
           case (#open) {
             ignore tasks.remove(taskId);
             ignore taskTimestamps.remove(taskId);
+            ignore taskStages.remove(taskId);
             #ok;
           };
           case (_) { #err("Task cannot be cancelled after being accepted") };
@@ -429,6 +519,55 @@ actor {
 
   public query ({ caller }) func countTasks() : async Nat {
     tasks.size();
+  };
+
+  // Task stage tracking - public query, anyone can view
+  public query ({ caller }) func getTaskStage(taskId : Text) : async ?TaskStageResponse {
+    switch (taskStages.get(taskId)) {
+      case (null) { null };
+      case (?record) {
+        ?{
+          stage = switch (record.stage) {
+            case (#posted) { "posted" };
+            case (#accepted) { "accepted" };
+            case (#on_the_way) { "on_the_way" };
+            case (#arrived) { "arrived" };
+            case (#verified) { "verified" };
+            case (#delivered) { "delivered" };
+          };
+          timestamp = record.timestamp;
+        };
+      };
+    };
+  };
+
+  // Get both poster and tasker profiles for a task - only accessible to participants
+  public query ({ caller }) func getTaskParticipantProfiles(taskId : Text) : async ?TaskParticipantProfiles {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view task participant profiles");
+    };
+    switch (tasks.get(taskId)) {
+      case (null) { null };
+      case (?task) {
+        // Only allow access if caller is poster or tasker
+        let isPoster = task.poster == caller;
+        let isTasker = switch (task.acceptor) {
+          case (?acceptor) { acceptor == caller };
+          case (null) { false };
+        };
+        if (isPoster or isTasker) {
+          ?{
+            posterProfile = userProfiles.get(task.poster);
+            taskerProfile = switch (task.acceptor) {
+              case (?acceptor) { userProfiles.get(acceptor) };
+              case (null) { null };
+            };
+          };
+        } else {
+          Runtime.trap("Unauthorized: Only participants can view task profiles");
+        };
+      };
+    };
   };
 
   // Helper functions

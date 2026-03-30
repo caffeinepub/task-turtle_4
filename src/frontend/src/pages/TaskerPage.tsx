@@ -5,12 +5,13 @@ import {
   MapPin,
   Phone,
   Tag,
+  User,
   Wallet,
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { type PublicTask, TaskStatus } from "../backend";
+import { useEffect, useRef, useState } from "react";
+import { type PublicTask, TaskStatus, type UserProfile } from "../backend";
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -28,31 +29,85 @@ const STAGE_LABELS: Record<WorkStage, string> = {
   5: "Verified ✓",
 };
 
-function getStoredStage(taskId: string): WorkStage {
-  const val = localStorage.getItem(`turtle_stage_${taskId}`);
-  if (val) return Number(val) as WorkStage;
-  return 1;
-}
-
-function setStoredStage(taskId: string, stage: WorkStage) {
-  localStorage.setItem(`turtle_stage_${taskId}`, String(stage));
+/** Map backend stage string to numeric WorkStage */
+function backendStageToWork(stage: string | null): WorkStage {
+  if (!stage) return 1;
+  switch (stage) {
+    case "on_the_way":
+      return 2;
+    case "arrived":
+      return 3;
+    case "verified":
+    case "delivered":
+      return 5;
+    default:
+      return 1; // "posted" | "accepted"
+  }
 }
 
 function ActiveTaskCard({
   task,
   onComplete,
 }: { task: PublicTask; onComplete: () => void }) {
-  const initialStage: WorkStage =
-    task.status === TaskStatus.completed ? 5 : getStoredStage(task.id);
-  const [stage, setStage] = useState<WorkStage>(initialStage);
+  const [stage, setStage] = useState<WorkStage>(1);
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [posterProfile, setPosterProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [advancing, setAdvancing] = useState(false);
   const { actor } = useActor();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  function advance(next: WorkStage) {
-    setStage(next);
-    setStoredStage(task.id, next);
+  // Fetch initial stage + profile, then poll stage every 3s
+  useEffect(() => {
+    if (!actor) return;
+
+    const fetchStage = async () => {
+      try {
+        const res = await actor.getTaskStage(task.id);
+        if (res) setStage(backendStageToWork(res.stage));
+      } catch (_) {
+        // keep last known stage
+      }
+    };
+
+    const fetchProfile = async () => {
+      try {
+        const profiles = await actor.getTaskParticipantProfiles(task.id);
+        if (profiles?.posterProfile) {
+          setPosterProfile(profiles.posterProfile);
+        }
+      } catch (_) {
+        // profile unavailable
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    // Initial fetch
+    Promise.all([fetchStage(), fetchProfile()]);
+
+    // Poll stage every 3s
+    intervalRef.current = setInterval(fetchStage, 3000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [actor, task.id]);
+
+  async function advanceStage(newStage: WorkStage, backendStage: string) {
+    if (!actor || advancing) return;
+    setAdvancing(true);
+    // Optimistic update
+    setStage(newStage);
+    try {
+      await actor.advanceTaskStage(task.id, backendStage);
+    } catch (_) {
+      // keep optimistic
+    } finally {
+      setAdvancing(false);
+    }
   }
 
   async function handleVerifyOtp() {
@@ -62,7 +117,7 @@ function ActiveTaskCard({
     try {
       const result = await actor.completeTask(task.id, otp);
       if (result) {
-        advance(5);
+        setStage(5);
         onComplete();
       } else {
         setOtpError("Invalid OTP. Please check with the customer.");
@@ -84,6 +139,111 @@ function ActiveTaskCard({
         border: `1px solid ${GREEN}25`,
       }}
     >
+      {/* Customer Details Card */}
+      <div
+        className="rounded-xl p-4 flex flex-col gap-3"
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: `1px solid ${GREEN}20`,
+        }}
+        data-ocid="taskerpage.customer.card"
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ background: `${GREEN}20`, border: `1px solid ${GREEN}35` }}
+          >
+            <User size={13} style={{ color: GREEN }} />
+          </div>
+          <p
+            className="text-xs font-bold uppercase tracking-widest"
+            style={{ color: GREEN }}
+          >
+            Customer Details
+          </p>
+        </div>
+
+        {profileLoading ? (
+          <div className="flex items-center gap-2 py-1">
+            <Loader2
+              size={13}
+              className="animate-spin"
+              style={{ color: GREEN }}
+            />
+            <span
+              className="text-xs"
+              style={{ color: "rgba(255,255,255,0.4)" }}
+            >
+              Loading customer info\u2026
+            </span>
+          </div>
+        ) : posterProfile ? (
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <p
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  Name
+                </p>
+                <p className="text-sm font-semibold text-white">
+                  {posterProfile.name}
+                </p>
+              </div>
+              <div>
+                <p
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  Phone
+                </p>
+                <p className="text-sm font-semibold" style={{ color: GREEN }}>
+                  {posterProfile.phone}
+                </p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Address
+              </p>
+              <p className="text-sm font-semibold text-white">
+                {posterProfile.location}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Task
+              </p>
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+                &ldquo;{task.title}
+                {task.description ? ` — ${task.description}` : ""}&rdquo;
+              </p>
+            </div>
+            {/* Call Customer button */}
+            <a
+              href={`tel:${posterProfile.phone}`}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{
+                background:
+                  "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                color: "#000000",
+                boxShadow: `0 0 14px ${GREEN}30`,
+                textDecoration: "none",
+              }}
+              data-ocid="taskerpage.call_customer.button"
+            >
+              <Phone size={14} />📞 Call Customer
+            </a>
+          </div>
+        ) : (
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+            Customer details not available
+          </p>
+        )}
+      </div>
+
+      {/* Task info */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="text-white font-bold text-sm truncate">
@@ -169,8 +329,9 @@ function ActiveTaskCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             type="button"
-            onClick={() => advance(2)}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold"
+            onClick={() => advanceStage(2, "on_the_way")}
+            disabled={advancing}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
             style={{
               background: `${GREEN}20`,
               color: GREEN,
@@ -178,6 +339,9 @@ function ActiveTaskCard({
             }}
             data-ocid="taskerpage.on_the_way.button"
           >
+            {advancing ? (
+              <Loader2 size={13} className="animate-spin inline mr-1.5" />
+            ) : null}
             🚴 Mark On the Way
           </motion.button>
         )}
@@ -188,15 +352,20 @@ function ActiveTaskCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             type="button"
-            onClick={() => advance(3)}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold"
+            onClick={() => advanceStage(3, "arrived")}
+            disabled={advancing}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
             style={{
-              background: `${GREEN}20`,
-              color: GREEN,
-              border: `1px solid ${GREEN}35`,
+              background:
+                "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+              color: "#000000",
+              boxShadow: `0 0 14px ${GREEN}40`,
             }}
             data-ocid="taskerpage.arrived.button"
           >
+            {advancing ? (
+              <Loader2 size={13} className="animate-spin inline mr-1.5" />
+            ) : null}
             📍 Mark Arrived
           </motion.button>
         )}
@@ -207,7 +376,7 @@ function ActiveTaskCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             type="button"
-            onClick={() => advance(4)}
+            onClick={() => setStage(4)}
             className="w-full py-2.5 rounded-xl text-sm font-semibold"
             style={{
               background:
@@ -507,7 +676,9 @@ export function TaskerPage() {
                         background: isOnline
                           ? `${GREEN}20`
                           : "rgba(255,255,255,0.05)",
-                        border: `1px solid ${isOnline ? `${GREEN}40` : "rgba(255,255,255,0.1)"}`,
+                        border: `1px solid ${
+                          isOnline ? `${GREEN}40` : "rgba(255,255,255,0.1)"
+                        }`,
                       }}
                     >
                       <Zap

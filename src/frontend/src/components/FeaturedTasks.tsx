@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { PublicTask } from "../backend.d";
 import { useActor } from "../hooks/useActor";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
+import { DEFAULT_TASK_IMAGE, getTaskImage } from "../utils/taskImage";
 
 const STATIC_TASKS = [
   {
@@ -145,23 +146,19 @@ export function FeaturedTasks() {
           // Use static fallback
           setTasks(STATIC_TASKS.map((t, i) => ({ ...t, id: String(i + 1) })));
         } else {
-          const mapped: DisplayTask[] = backendTasks
-            .slice(0, 8)
-            .map((t, i) => ({
-              id: t.id,
-              title: t.title,
-              price: Number(t.amount),
-              description: t.description,
-              location: t.location,
-              category: t.category,
-              status: t.status as TaskStatus,
-              helper: "Local Helper",
-              initials: t.category.slice(0, 2).toUpperCase(),
-              rating: "5.0",
-              image:
-                STATIC_TASKS[i % STATIC_TASKS.length]?.image ??
-                "/assets/generated/task-grocery.dim_400x240.jpg",
-            }));
+          const mapped: DisplayTask[] = backendTasks.slice(0, 8).map((t) => ({
+            id: t.id,
+            title: t.title,
+            price: Number(t.amount),
+            description: t.description,
+            location: t.location,
+            category: t.category,
+            status: t.status as TaskStatus,
+            helper: "Local Helper",
+            initials: t.category.slice(0, 2).toUpperCase(),
+            rating: "5.0",
+            image: getTaskImage(t.title, t.category, t.description ?? ""),
+          }));
           setTasks(mapped);
         }
       })
@@ -272,6 +269,10 @@ export function FeaturedTasks() {
                       src={task.image}
                       alt={task.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src =
+                          DEFAULT_TASK_IMAGE;
+                      }}
                     />
                     {/* Price badge */}
                     <div className="absolute top-3 right-3 flex flex-col items-end gap-1">

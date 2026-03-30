@@ -51,6 +51,9 @@ export function Hero() {
                     "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
                   color: "#000000",
                 }}
+                onClick={() => {
+                  window.location.hash = "#dashboard";
+                }}
                 data-ocid="hero.primary_button"
               >
                 Get Started Free

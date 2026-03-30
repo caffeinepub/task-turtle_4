@@ -72,7 +72,7 @@ function TaskStageCard({
       className="rounded-xl p-5 flex flex-col gap-4"
       style={{
         background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid rgba(0,230,118,0.12)",
         backdropFilter: "blur(12px)",
       }}
     >
@@ -121,7 +121,7 @@ function TaskStageCard({
               className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
               style={{
                 background: stage >= s ? GREEN : "rgba(255,255,255,0.08)",
-                color: stage >= s ? "#050505" : "rgba(255,255,255,0.3)",
+                color: stage >= s ? "#000000" : "rgba(255,255,255,0.3)",
                 boxShadow: stage === s ? `0 0 10px ${GREEN}60` : "none",
                 transition: "all 0.3s",
               }}
@@ -199,8 +199,9 @@ function TaskStageCard({
             onClick={() => advance(4)}
             className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{
-              background: GREEN,
-              color: "#050505",
+              background:
+                "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+              color: "#000000",
               boxShadow: `0 0 14px ${GREEN}40`,
             }}
             data-ocid="taskerwork.enter_otp.button"
@@ -256,8 +257,9 @@ function TaskStageCard({
               disabled={otp.length !== 6 || verifying}
               className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
               style={{
-                background: GREEN,
-                color: "#050505",
+                background:
+                  "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                color: "#000000",
                 boxShadow: otp.length === 6 ? `0 0 14px ${GREEN}40` : "none",
               }}
               data-ocid="taskerwork.verify_otp.submit_button"

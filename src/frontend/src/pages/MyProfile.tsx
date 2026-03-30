@@ -234,7 +234,7 @@ export default function MyProfile() {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#050505" }}
+        style={{ backgroundColor: "#000000" }}
       >
         <p style={{ color: "rgba(255,255,255,0.5)" }}>
           Please log in to view your profile.
@@ -244,7 +244,7 @@ export default function MyProfile() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       <AppNavbar currentPage="profile" />
 
       <main className="max-w-xl mx-auto px-4 py-8">
@@ -275,7 +275,7 @@ export default function MyProfile() {
             className="rounded-2xl p-6 md:p-8"
             style={{
               background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(0,230,118,0.12)",
             }}
           >
             {globalError && (
@@ -440,7 +440,7 @@ export default function MyProfile() {
                 className="rounded-xl p-4"
                 style={{
                   background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(0,230,118,0.08)",
                 }}
               >
                 <p
@@ -539,7 +539,7 @@ export default function MyProfile() {
                 className="w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
                 style={{
                   background: saveDisabled ? "rgba(0,230,118,0.3)" : GREEN,
-                  color: saveDisabled ? "rgba(0,0,0,0.4)" : "#050505",
+                  color: saveDisabled ? "rgba(0,0,0,0.4)" : "#000000",
                   cursor: saveDisabled ? "not-allowed" : "pointer",
                 }}
               >

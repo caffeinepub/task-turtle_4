@@ -66,7 +66,7 @@ export function OTPVerification({
         background: "rgba(255,255,255,0.05)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255,255,255,0.10)",
+        border: "1px solid rgba(0,230,118,0.15)",
         boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
       }}
       data-ocid="otp.modal"
@@ -219,9 +219,11 @@ export function OTPVerification({
                 border:
                   value.length === 6
                     ? "none"
-                    : "1px solid rgba(255,255,255,0.10)",
+                    : "1px solid rgba(0,230,118,0.15)",
                 boxShadow:
-                  value.length === 6 ? "0 0 20px rgba(0,230,118,0.35)" : "none",
+                  value.length === 6
+                    ? "0 0 24px rgba(0,230,118,0.55), 0 0 48px rgba(0,230,118,0.2)"
+                    : "none",
                 cursor: value.length === 6 ? "pointer" : "not-allowed",
               }}
               onClick={handleVerify}

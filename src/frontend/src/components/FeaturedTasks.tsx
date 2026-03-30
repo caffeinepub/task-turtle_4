@@ -95,8 +95,8 @@ function SkeletonCard() {
     <div
       className="rounded-2xl border overflow-hidden"
       style={{
-        background: "rgba(14,18,20,0.6)",
-        borderColor: "rgba(255,255,255,0.09)",
+        background: "rgba(0,0,0,0.6)",
+        borderColor: "rgba(0,230,118,0.12)",
       }}
     >
       <div
@@ -260,7 +260,7 @@ export function FeaturedTasks() {
                   transition={{ duration: 0.5, delay: i * 0.08 }}
                   className="group rounded-2xl border overflow-hidden hover:shadow-[0_0_40px_rgba(0,230,118,0.12)] transition-all duration-300"
                   style={{
-                    background: "rgba(14,18,20,0.6)",
+                    background: "rgba(0,0,0,0.6)",
                     borderColor: surgeActive
                       ? "rgba(255,160,0,0.18)"
                       : "rgba(255,255,255,0.09)",
@@ -281,7 +281,7 @@ export function FeaturedTasks() {
                             className="px-2.5 py-1 rounded-full text-xs font-bold"
                             style={{
                               backgroundColor: "#FFA000",
-                              color: "#050505",
+                              color: "#000000",
                             }}
                           >
                             \u20b9{surgedNum}
@@ -297,8 +297,9 @@ export function FeaturedTasks() {
                         <span
                           className="px-2.5 py-1 rounded-full text-xs font-bold"
                           style={{
-                            backgroundColor: "#00E676",
-                            color: "#050505",
+                            background:
+                              "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                            color: "#000000",
                           }}
                         >
                           \u20b9{task.price}
@@ -348,7 +349,7 @@ export function FeaturedTasks() {
 
                     <div
                       className="flex items-center justify-between pt-3 border-t"
-                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                      style={{ borderColor: "rgba(0,230,118,0.12)" }}
                     >
                       <div className="flex items-center gap-2">
                         <div
@@ -372,7 +373,11 @@ export function FeaturedTasks() {
                       <button
                         type="button"
                         className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:shadow-[0_0_15px_rgba(0,230,118,0.3)] active:scale-95"
-                        style={{ backgroundColor: "#00E676", color: "#050505" }}
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                          color: "#000000",
+                        }}
                         data-ocid={`tasks.button.${i + 1}`}
                       >
                         View

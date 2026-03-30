@@ -67,7 +67,7 @@ const FEATURES = [
 
 export function FeaturesPage() {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       <Navbar />
       <div className="pt-28 pb-24 px-6">
         <div className="max-w-[1200px] mx-auto">
@@ -103,8 +103,8 @@ export function FeaturesPage() {
                   transition={{ duration: 0.5, delay: i * 0.08 }}
                   className="relative rounded-2xl p-6 border backdrop-blur-md group hover:shadow-[0_0_40px_rgba(0,230,118,0.12)] transition-all duration-300"
                   style={{
-                    background: "rgba(14,18,20,0.6)",
-                    borderColor: "rgba(255,255,255,0.09)",
+                    background: "rgba(0,0,0,0.6)",
+                    borderColor: "rgba(0,230,118,0.12)",
                   }}
                 >
                   <div
@@ -140,7 +140,7 @@ export function FeaturesPage() {
             <a
               href="#dashboard"
               className="inline-block px-8 py-3 rounded-full text-sm font-semibold transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,230,118,0.4)]"
-              style={{ backgroundColor: GREEN, color: "#050505" }}
+              style={{ backgroundColor: GREEN, color: "#000000" }}
             >
               Get Started Free →
             </a>

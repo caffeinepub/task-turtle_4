@@ -63,7 +63,7 @@ export default function App() {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#050505" }}
+        style={{ backgroundColor: "#000000" }}
       >
         <div
           className="w-12 h-12 rounded-full border-2 animate-spin"
@@ -95,7 +95,7 @@ export default function App() {
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"
-      style={{ backgroundColor: "#050505" }}
+      style={{ backgroundColor: "#000000" }}
     >
       <div
         className="fixed top-0 left-0 w-[600px] h-[600px] pointer-events-none"
@@ -223,7 +223,7 @@ export default function App() {
                     background: "rgba(255,255,255,0.04)",
                     backdropFilter: "blur(16px)",
                     WebkitBackdropFilter: "blur(16px)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(0,230,118,0.12)",
                   }}
                   data-ocid="otp.card"
                 >
@@ -268,9 +268,11 @@ export default function App() {
                     type="button"
                     className="w-full h-12 rounded-xl font-semibold text-sm transition-all duration-200"
                     style={{
-                      background: GREEN,
+                      background:
+                        "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
                       color: "#000",
-                      boxShadow: "0 0 20px rgba(0,230,118,0.35)",
+                      boxShadow:
+                        "0 0 24px rgba(0,230,118,0.55), 0 0 48px rgba(0,230,118,0.2)",
                     }}
                     onClick={() => {
                       setVerified(false);

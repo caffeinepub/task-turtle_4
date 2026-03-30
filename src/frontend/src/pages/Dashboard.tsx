@@ -105,7 +105,7 @@ function TaskCard({
       className="rounded-xl p-5 flex flex-col gap-3"
       style={{
         background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        border: "1px solid rgba(0,230,118,0.1)",
         backdropFilter: "blur(12px)",
       }}
     >
@@ -623,7 +623,11 @@ function PostTaskTab() {
           type="button"
           onClick={reset}
           className="mt-2 px-6 py-2.5 rounded-xl font-semibold text-sm"
-          style={{ background: GREEN, color: "#050505" }}
+          style={{
+            background:
+              "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+            color: "#000000",
+          }}
           data-ocid="posttask.primary_button"
         >
           Post Another Task
@@ -892,7 +896,7 @@ function PostTaskTab() {
             <option
               value=""
               disabled
-              style={{ background: "#0a0e0c", color: "rgba(255,255,255,0.35)" }}
+              style={{ background: "#000000", color: "rgba(255,255,255,0.35)" }}
             >
               Select a category
             </option>
@@ -900,7 +904,7 @@ function PostTaskTab() {
               <option
                 key={c.value}
                 value={c.value}
-                style={{ background: "#0a0e0c", color: "#fff" }}
+                style={{ background: "#000000", color: "#fff" }}
               >
                 {c.label}
               </option>
@@ -1003,9 +1007,12 @@ function PostTaskTab() {
         whileTap={isLoading ? {} : { scale: 0.98 }}
         className="w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-70"
         style={{
-          background: GREEN,
-          color: "#050505",
-          boxShadow: isLoading ? "none" : "0 4px 24px rgba(0,230,118,0.35)",
+          background:
+            "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+          color: "#000000",
+          boxShadow: isLoading
+            ? "none"
+            : "0 0 24px rgba(0,230,118,0.55), 0 4px 20px rgba(0,230,118,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
         }}
       >
         {isLoading && <Loader2 size={16} className="animate-spin" />}
@@ -1147,8 +1154,9 @@ function FindTasksTab() {
                           }
                           className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all disabled:opacity-60"
                           style={{
-                            background: GREEN,
-                            color: "#050505",
+                            background:
+                              "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                            color: "#000000",
                             boxShadow: `0 0 12px ${GREEN}35`,
                           }}
                           data-ocid={`findtasks.primary_button.${i + 1}`}
@@ -1203,7 +1211,7 @@ function DashTabButton({
             ? "rgba(0,230,118,0.10)"
             : "transparent",
         color: isActive
-          ? "#050505"
+          ? "#000000"
           : hovered
             ? "rgba(255,255,255,0.9)"
             : "rgba(255,255,255,0.5)",
@@ -1219,7 +1227,7 @@ function DashTabButton({
           className="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold"
           style={{
             background: isActive ? "rgba(0,0,0,0.2)" : `${GREEN}25`,
-            color: isActive ? "#050505" : GREEN,
+            color: isActive ? "#000000" : GREEN,
           }}
         >
           {count}
@@ -1255,7 +1263,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       {/* Ambient glows */}
       <div
         className="fixed top-0 left-0 w-[600px] h-[600px] pointer-events-none"
@@ -1297,7 +1305,7 @@ export function Dashboard() {
           className="flex items-center gap-1 p-1 rounded-2xl mb-8 w-fit"
           style={{
             background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            border: "1px solid rgba(0,230,118,0.1)",
           }}
         >
           {TABS.map(({ id, label, count }) => (

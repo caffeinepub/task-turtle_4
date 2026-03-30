@@ -21,7 +21,7 @@ export function LoginPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ backgroundColor: "#050505" }}
+      style={{ backgroundColor: "#000000" }}
     >
       <div
         className="fixed top-0 left-0 w-[500px] h-[500px] pointer-events-none"
@@ -74,7 +74,7 @@ export function LoginPage() {
           className="rounded-2xl p-8"
           style={{
             background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(0,230,118,0.12)",
             backdropFilter: "blur(24px)",
             WebkitBackdropFilter: "blur(24px)",
             boxShadow:

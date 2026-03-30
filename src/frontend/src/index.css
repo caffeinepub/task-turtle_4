@@ -7,36 +7,36 @@
 @layer base {
   :root {
     --radius: 0.625rem;
-    /* Task Turtle — Dark Theme Tokens (OKLCH raw L C H) */
-    --background: 0.07 0 0;
+    /* Task Turtle — Obsidian Black + Electric Green Design System (OKLCH raw L C H) */
+    --background: 0 0 0;
     --foreground: 0.96 0 0;
-    --card: 0.12 0 0;
+    --card: 0.07 0 0;
     --card-foreground: 0.96 0 0;
-    --popover: 0.12 0 0;
+    --popover: 0.07 0 0;
     --popover-foreground: 0.96 0 0;
     --primary: 0.82 0.24 155;
-    --primary-foreground: 0.07 0 0;
-    --secondary: 0.18 0 0;
+    --primary-foreground: 0 0 0;
+    --secondary: 0.12 0 0;
     --secondary-foreground: 0.96 0 0;
-    --muted: 0.18 0 0;
+    --muted: 0.12 0 0;
     --muted-foreground: 0.65 0.01 250;
     --accent: 0.82 0.24 155;
-    --accent-foreground: 0.07 0 0;
+    --accent-foreground: 0 0 0;
     --destructive: 0.577 0.245 27.325;
     --destructive-foreground: 0.985 0 0;
     --border: 1 0 0 / 10%;
-    --input: 1 0 0 / 15%;
+    --input: 1 0 0 / 8%;
     --ring: 0.82 0.24 155;
     --chart-1: 0.82 0.24 155;
     --chart-2: 0.6 0.118 184.704;
     --chart-3: 0.398 0.07 227.392;
     --chart-4: 0.828 0.189 84.429;
     --chart-5: 0.769 0.188 70.08;
-    --sidebar: 0.12 0 0;
+    --sidebar: 0.07 0 0;
     --sidebar-foreground: 0.96 0 0;
     --sidebar-primary: 0.82 0.24 155;
-    --sidebar-primary-foreground: 0.07 0 0;
-    --sidebar-accent: 0.18 0 0;
+    --sidebar-primary-foreground: 0 0 0;
+    --sidebar-accent: 0.12 0 0;
     --sidebar-accent-foreground: 0.96 0 0;
     --sidebar-border: 1 0 0 / 10%;
     --sidebar-ring: 0.82 0.24 155;
@@ -45,12 +45,63 @@
   * {
     @apply border-border;
   }
+  html,
   body {
-    @apply bg-background text-foreground;
+    background-color: #000000;
+    @apply text-foreground;
     font-family: "Inter", sans-serif;
+  }
+  body {
+    @apply bg-background;
   }
 }
 
+/* ── Glossy Electric Green Utilities ─────────────────────────── */
+@layer utilities {
+  .btn-green-glossy {
+    background: linear-gradient(135deg, #00e676 0%, #00ff90 50%, #00e676 100%);
+    background-size: 200% auto;
+    box-shadow: 0 0 20px rgba(0, 230, 118, 0.45), 0 2px 12px
+      rgba(0, 230, 118, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: background-position 0.4s ease, box-shadow 0.2s ease, transform
+      0.15s ease;
+    color: #000000;
+    font-weight: 700;
+  }
+  .btn-green-glossy:hover {
+    background-position: right center;
+    box-shadow: 0 0 32px rgba(0, 230, 118, 0.65), 0 4px 20px
+      rgba(0, 230, 118, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+  }
+  .btn-green-glossy:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 16px rgba(0, 230, 118, 0.4);
+  }
+
+  .green-glow {
+    box-shadow: 0 0 16px rgba(0, 230, 118, 0.4);
+  }
+  .green-glow-lg {
+    box-shadow: 0 0 32px rgba(0, 230, 118, 0.5), 0 0 60px rgba(0, 230, 118, 0.2);
+  }
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 230, 118, 0.1);
+  }
+  .card-obsidian {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 230, 118, 0.12);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.8), 0 0 0 0.5px
+      rgba(0, 230, 118, 0.06);
+  }
+}
+
+/* ── Keyframes ────────────────────────────────────────────────── */
 @keyframes pulse-green {
   0%,
   100% {
@@ -70,6 +121,16 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ── Component Overrides ──────────────────────────────────────── */
 .search-input:focus {
   border-color: rgba(0, 230, 118, 0.5) !important;
   box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.12), 0 0 12px
@@ -84,4 +145,29 @@
 .stat-card:hover {
   transform: scale(1.025);
   border-color: rgba(0, 230, 118, 0.35) !important;
+}
+
+/* Input focus ring */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: rgba(0, 230, 118, 0.45) !important;
+  box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.1) !important;
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 230, 118, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 230, 118, 0.4);
 }

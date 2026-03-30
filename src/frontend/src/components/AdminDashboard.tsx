@@ -26,7 +26,7 @@ import { useActor } from "../hooks/useActor";
 
 const G = "#00E676";
 const CARD = "rgba(255,255,255,0.04)";
-const BORDER = "1px solid rgba(255,255,255,0.08)";
+const BORDER = "1px solid rgba(0,230,118,0.12)";
 const SEARCH_STYLE: React.CSSProperties = {
   background: "rgba(255,255,255,0.07)",
   border: "1px solid rgba(255,255,255,0.14)",
@@ -201,7 +201,7 @@ function ProfileModal({
               className="rounded-xl px-4 py-3"
               style={{
                 background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                border: "1px solid rgba(0,230,118,0.1)",
               }}
             >
               <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">
@@ -1196,7 +1196,7 @@ function PaymentsTab({
                 border:
                   filter === f.key
                     ? `1px solid ${G}`
-                    : "1px solid rgba(255,255,255,0.08)",
+                    : "1px solid rgba(0,230,118,0.12)",
               }}
               data-ocid={`payments.${f.key}.toggle`}
             >
@@ -1644,7 +1644,7 @@ export function AdminDashboard() {
       className="min-h-screen"
       style={{
         background:
-          "linear-gradient(135deg, #050505 0%, #0a120e 50%, #050505 100%)",
+          "linear-gradient(135deg, #000000 0%, #060e09 50%, #000000 100%)",
       }}
     >
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -1677,7 +1677,7 @@ export function AdminDashboard() {
               color: refreshed ? G : "rgba(255,255,255,0.6)",
               border: refreshed
                 ? `1px solid ${G}40`
-                : "1px solid rgba(255,255,255,0.10)",
+                : "1px solid rgba(0,230,118,0.15)",
             }}
             data-ocid="admin.primary_button"
           >

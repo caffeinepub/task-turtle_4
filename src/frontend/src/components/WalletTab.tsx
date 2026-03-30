@@ -125,7 +125,7 @@ export function WalletTab() {
         className="rounded-xl px-4 py-3 text-xs"
         style={{
           background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          border: "1px solid rgba(0,230,118,0.1)",
           color: "rgba(255,255,255,0.4)",
         }}
       >
@@ -147,7 +147,7 @@ export function WalletTab() {
             className="flex flex-col items-center justify-center py-12 text-center rounded-xl"
             style={{
               background: "rgba(255,255,255,0.02)",
-              border: "1px solid rgba(255,255,255,0.06)",
+              border: "1px solid rgba(0,230,118,0.08)",
             }}
             data-ocid="wallet.earnings.empty_state"
           >
@@ -177,7 +177,7 @@ export function WalletTab() {
                   className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                   style={{
                     background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(0,230,118,0.1)",
                   }}
                   data-ocid={`wallet.earnings.item.${i + 1}`}
                 >

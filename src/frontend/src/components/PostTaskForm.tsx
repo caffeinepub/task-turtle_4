@@ -182,7 +182,7 @@ export default function PostTaskForm() {
     return (
       <div
         className="min-h-screen flex items-center justify-center px-4"
-        style={{ backgroundColor: "#050505" }}
+        style={{ backgroundColor: "#000000" }}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.92 }}
@@ -241,7 +241,11 @@ export default function PostTaskForm() {
             type="button"
             onClick={handleReset}
             className="mt-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-95"
-            style={{ background: "#00E676", color: "#050505" }}
+            style={{
+              background:
+                "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+              color: "#000000",
+            }}
             data-ocid="posttask.primary_button"
           >
             Post Another Task
@@ -257,7 +261,7 @@ export default function PostTaskForm() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "#050505" }}
+      style={{ backgroundColor: "#000000" }}
     >
       <motion.div
         initial={{ opacity: 0, y: 28 }}
@@ -270,7 +274,7 @@ export default function PostTaskForm() {
           className="rounded-2xl p-7 sm:p-8"
           style={{
             background: "rgba(10,14,12,0.78)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(0,230,118,0.12)",
             backdropFilter: "blur(24px)",
             boxShadow:
               "0 8px 40px rgba(0,0,0,0.55), 0 0 60px rgba(0,230,118,0.06)",
@@ -366,7 +370,7 @@ export default function PostTaskForm() {
                     value=""
                     disabled
                     style={{
-                      background: "#0a0e0c",
+                      background: "#000000",
                       color: "rgba(255,255,255,0.35)",
                     }}
                   >
@@ -374,19 +378,19 @@ export default function PostTaskForm() {
                   </option>
                   <option
                     value="Grocery"
-                    style={{ background: "#0a0e0c", color: "#fff" }}
+                    style={{ background: "#000000", color: "#fff" }}
                   >
                     \uD83D\uDED2 Grocery
                   </option>
                   <option
                     value="Pharmacy"
-                    style={{ background: "#0a0e0c", color: "#fff" }}
+                    style={{ background: "#000000", color: "#fff" }}
                   >
                     \uD83D\uDC8A Pharmacy
                   </option>
                   <option
                     value="Errands"
-                    style={{ background: "#0a0e0c", color: "#fff" }}
+                    style={{ background: "#000000", color: "#fff" }}
                   >
                     \uD83D\uDCE6 Errands
                   </option>
@@ -691,8 +695,9 @@ export default function PostTaskForm() {
               whileTap={submitDisabled ? {} : { scale: 0.97 }}
               className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 mt-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               style={{
-                background: "#00E676",
-                color: "#050505",
+                background:
+                  "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                color: "#000000",
                 boxShadow: submitDisabled
                   ? "none"
                   : "0 4px 20px rgba(0,230,118,0.3)",

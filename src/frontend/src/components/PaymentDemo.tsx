@@ -66,7 +66,7 @@ export function PaymentDemo() {
             className="rounded-2xl p-8"
             style={{
               background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(0,230,118,0.12)",
               backdropFilter: "blur(16px)",
             }}
           >
@@ -103,7 +103,7 @@ export function PaymentDemo() {
             className="rounded-2xl p-8"
             style={{
               background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(0,230,118,0.12)",
               backdropFilter: "blur(16px)",
             }}
           >

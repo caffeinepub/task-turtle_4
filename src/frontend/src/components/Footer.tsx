@@ -34,8 +34,8 @@ export function Footer() {
           transition={{ duration: 0.6 }}
           className="rounded-3xl border backdrop-blur-md p-10 lg:p-14"
           style={{
-            background: "rgba(14,18,20,0.65)",
-            borderColor: "rgba(255,255,255,0.09)",
+            background: "rgba(0,0,0,0.65)",
+            borderColor: "rgba(0,230,118,0.12)",
             boxShadow: "0 0 80px rgba(0,230,118,0.05)",
           }}
         >
@@ -109,7 +109,7 @@ export function Footer() {
 
           <div
             className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t"
-            style={{ borderColor: "rgba(255,255,255,0.08)" }}
+            style={{ borderColor: "rgba(0,230,118,0.12)" }}
           >
             <p className="text-[#A7ADB3] text-xs">
               © {currentYear} Task Turtle. All rights reserved.

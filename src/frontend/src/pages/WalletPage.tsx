@@ -47,7 +47,7 @@ export function WalletPage() {
   const currentBalance = totalEarned;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       <AppNavbar currentPage="wallet" />
 
       <main className="max-w-3xl mx-auto px-4 py-8">
@@ -84,7 +84,7 @@ export function WalletPage() {
               className="rounded-2xl p-6"
               style={{
                 background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.09)",
+                border: "1px solid rgba(0,230,118,0.12)",
                 backdropFilter: "blur(16px)",
               }}
               data-ocid="wallet.balance.card"
@@ -137,8 +137,9 @@ export function WalletPage() {
                   type="button"
                   className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all"
                   style={{
-                    background: GREEN,
-                    color: "#050505",
+                    background:
+                      "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                    color: "#000000",
                     boxShadow: `0 0 16px ${GREEN}40`,
                   }}
                   data-ocid="wallet.add_funds.button"
@@ -200,7 +201,7 @@ export function WalletPage() {
                   className="flex flex-col items-center justify-center py-14 rounded-xl text-center"
                   style={{
                     background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(0,230,118,0.08)",
                   }}
                   data-ocid="wallet.earnings.empty_state"
                 >
@@ -238,7 +239,7 @@ export function WalletPage() {
                         className="rounded-xl p-4 flex items-center justify-between gap-4"
                         style={{
                           background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.07)",
+                          border: "1px solid rgba(0,230,118,0.1)",
                         }}
                         data-ocid={`wallet.earnings.item.${i + 1}`}
                       >

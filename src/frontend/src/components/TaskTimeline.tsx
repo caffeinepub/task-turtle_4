@@ -84,7 +84,7 @@ export function TaskTimeline({ currentStage = 1, taskId }: TaskTimelineProps) {
         background: "rgba(255,255,255,0.04)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid rgba(0,230,118,0.12)",
       }}
       data-ocid="task_timeline.card"
     >
@@ -245,7 +245,7 @@ export function TaskTimeline({ currentStage = 1, taskId }: TaskTimelineProps) {
       {/* Footer hint */}
       <div
         className="mt-6 pt-4"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        style={{ borderTop: "1px solid rgba(0,230,118,0.08)" }}
       >
         <p className="text-xs text-white/25 text-center">
           Stage {current} of {STAGES.length} &mdash; {STAGES[current - 1].label}

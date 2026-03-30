@@ -134,7 +134,7 @@ function ActiveTaskCard({
               className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
               style={{
                 background: stage >= s ? GREEN : "rgba(255,255,255,0.08)",
-                color: stage >= s ? "#050505" : "rgba(255,255,255,0.3)",
+                color: stage >= s ? "#000000" : "rgba(255,255,255,0.3)",
                 boxShadow: stage === s ? `0 0 10px ${GREEN}60` : "none",
                 transition: "all 0.3s",
               }}
@@ -210,8 +210,9 @@ function ActiveTaskCard({
             onClick={() => advance(4)}
             className="w-full py-2.5 rounded-xl text-sm font-semibold"
             style={{
-              background: GREEN,
-              color: "#050505",
+              background:
+                "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+              color: "#000000",
               boxShadow: `0 0 14px ${GREEN}40`,
             }}
             data-ocid="taskerpage.enter_otp.button"
@@ -260,7 +261,11 @@ function ActiveTaskCard({
               onClick={handleVerifyOtp}
               disabled={otp.length !== 6 || verifying}
               className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
-              style={{ background: GREEN, color: "#050505" }}
+              style={{
+                background:
+                  "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                color: "#000000",
+              }}
               data-ocid="taskerpage.verify_otp.submit_button"
             >
               {verifying ? (
@@ -302,7 +307,7 @@ function AvailableTaskCard({
       className="rounded-xl p-5 flex flex-col gap-3"
       style={{
         background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid rgba(0,230,118,0.12)",
       }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -369,8 +374,9 @@ function AvailableTaskCard({
           disabled={isAccepting}
           className="flex-1 max-w-[180px] py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
           style={{
-            background: GREEN,
-            color: "#050505",
+            background:
+              "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+            color: "#000000",
             boxShadow: `0 0 12px ${GREEN}30`,
           }}
           data-ocid="taskerpage.accept_task.button"
@@ -452,7 +458,7 @@ export function TaskerPage() {
   );
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       <AppNavbar currentPage="tasker" />
 
       <main className="max-w-6xl mx-auto px-4 py-8">
@@ -491,7 +497,7 @@ export function TaskerPage() {
                   className="rounded-xl p-5 flex items-center justify-between"
                   style={{
                     background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(0,230,118,0.12)",
                   }}
                 >
                   <div className="flex items-center gap-3">
@@ -561,7 +567,7 @@ export function TaskerPage() {
                       className="flex flex-col items-center justify-center py-12 text-center rounded-xl"
                       style={{
                         background: "rgba(255,255,255,0.02)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(0,230,118,0.08)",
                       }}
                       data-ocid="taskerpage.available.empty_state"
                     >
@@ -605,7 +611,7 @@ export function TaskerPage() {
                   className="rounded-xl p-5"
                   style={{
                     background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(0,230,118,0.12)",
                   }}
                   data-ocid="taskerpage.earnings.card"
                 >
@@ -640,7 +646,7 @@ export function TaskerPage() {
                       className="flex flex-col items-center justify-center py-12 text-center rounded-xl"
                       style={{
                         background: "rgba(255,255,255,0.02)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(0,230,118,0.08)",
                       }}
                       data-ocid="taskerpage.active.empty_state"
                     >
@@ -707,7 +713,7 @@ export function TaskerPage() {
                       className="rounded-xl p-4 flex items-center justify-between gap-3"
                       style={{
                         background: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.07)",
+                        border: "1px solid rgba(0,230,118,0.1)",
                       }}
                       data-ocid={`taskerpage.completed.item.${i + 1}`}
                     >

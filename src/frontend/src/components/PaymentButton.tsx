@@ -186,9 +186,11 @@ export function PaymentButton({
         type="button"
         className="w-full h-12 rounded-xl font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-95"
         style={{
-          background: GREEN,
+          background:
+            "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
           color: "#000",
-          boxShadow: "0 0 20px rgba(0,230,118,0.35)",
+          boxShadow:
+            "0 0 24px rgba(0,230,118,0.55), 0 0 48px rgba(0,230,118,0.2)",
         }}
         onClick={handleStartPayment}
         data-ocid="payment.primary_button"

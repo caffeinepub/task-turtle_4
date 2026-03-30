@@ -32,17 +32,19 @@ function NavLink({
       className="px-3 md:px-4 py-2 rounded-full text-sm transition-all cursor-pointer"
       style={{
         background: isActive
-          ? GREEN
+          ? "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)"
           : hovered
             ? "rgba(0,230,118,0.12)"
             : "transparent",
         color: isActive
-          ? "#050505"
+          ? "#000000"
           : hovered
             ? "rgba(255,255,255,0.9)"
             : "rgba(255,255,255,0.6)",
         fontWeight: isActive ? 800 : 700,
-        boxShadow: isActive ? `0 0 14px ${GREEN}50` : "none",
+        boxShadow: isActive
+          ? "0 0 20px rgba(0,230,118,0.5), 0 0 40px rgba(0,230,118,0.2)"
+          : "none",
         transition: "all 0.2s",
       }}
       data-ocid={`appnav.${link.page}.link`}
@@ -59,7 +61,7 @@ export function AppNavbar({ currentPage }: { currentPage: Page }) {
     <header
       className="sticky top-0 z-50 flex items-center justify-between px-4 md:px-8 py-3"
       style={{
-        background: "rgba(5,5,5,0.92)",
+        background: "rgba(0,0,0,0.92)",
         borderBottom: "1px solid rgba(0,230,118,0.12)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",

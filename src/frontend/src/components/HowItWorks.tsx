@@ -60,8 +60,8 @@ export function HowItWorks() {
                 transition={{ duration: 0.5, delay: i * 0.12 }}
                 className="relative rounded-2xl p-7 border backdrop-blur-md group hover:shadow-[0_0_40px_rgba(0,230,118,0.12)] transition-all duration-300"
                 style={{
-                  background: "rgba(14,18,20,0.6)",
-                  borderColor: "rgba(255,255,255,0.09)",
+                  background: "rgba(0,0,0,0.6)",
+                  borderColor: "rgba(0,230,118,0.12)",
                 }}
                 data-ocid={`how_it_works.card.${i + 1}`}
               >
@@ -104,7 +104,10 @@ export function HowItWorks() {
                 {/* Bottom accent line */}
                 <div
                   className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 group-hover:w-1/2 transition-all duration-500 rounded-full"
-                  style={{ backgroundColor: "#00E676" }}
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                  }}
                 />
               </motion.div>
             );

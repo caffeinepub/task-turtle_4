@@ -57,7 +57,7 @@ const STEPS = [
 
 export function HowItWorksPage() {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       <Navbar />
       <div className="pt-28 pb-24 px-6">
         <div className="max-w-[900px] mx-auto">
@@ -117,8 +117,8 @@ export function HowItWorksPage() {
                     <div
                       className="rounded-2xl p-6 border"
                       style={{
-                        background: "rgba(14,18,20,0.7)",
-                        borderColor: "rgba(255,255,255,0.09)",
+                        background: "rgba(0,0,0,0.7)",
+                        borderColor: "rgba(0,230,118,0.12)",
                       }}
                     >
                       <div className="flex items-center gap-3 mb-3">
@@ -166,7 +166,7 @@ export function HowItWorksPage() {
             <a
               href="#dashboard"
               className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-semibold transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,230,118,0.4)]"
-              style={{ backgroundColor: GREEN, color: "#050505" }}
+              style={{ backgroundColor: GREEN, color: "#000000" }}
             >
               Post Your First Task <ArrowRight size={14} />
             </a>

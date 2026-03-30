@@ -70,7 +70,7 @@ const POSTS = [
 
 export function BlogPage() {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#050505" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       <Navbar />
       <div className="pt-28 pb-24 px-6">
         <div className="max-w-[1200px] mx-auto">
@@ -104,8 +104,8 @@ export function BlogPage() {
                 transition={{ duration: 0.5, delay: i * 0.08 }}
                 className="group relative rounded-2xl border p-6 hover:shadow-[0_0_40px_rgba(0,230,118,0.1)] transition-all duration-300 cursor-pointer"
                 style={{
-                  background: "rgba(14,18,20,0.7)",
-                  borderColor: "rgba(255,255,255,0.09)",
+                  background: "rgba(0,0,0,0.7)",
+                  borderColor: "rgba(0,230,118,0.12)",
                 }}
               >
                 {/* Tag */}

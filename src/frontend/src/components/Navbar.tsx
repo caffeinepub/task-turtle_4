@@ -47,7 +47,7 @@ export function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-[rgba(5,5,5,0.85)] backdrop-blur-xl shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+          ? "bg-[rgba(0,0,0,0.85)] backdrop-blur-xl shadow-[0_1px_0_rgba(0,230,118,0.15)]"
           : "bg-transparent"
       }`}
     >
@@ -90,8 +90,12 @@ export function Navbar() {
               <>
                 <a
                   href="#dashboard"
-                  className="px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,230,118,0.4)] active:scale-95 flex items-center gap-1.5"
-                  style={{ backgroundColor: "#00E676", color: "#050505" }}
+                  className="px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 hover:shadow-[0_0_28px_rgba(0,230,118,0.6)] active:scale-95 flex items-center gap-1.5"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                    color: "#000000",
+                  }}
                   data-ocid="navbar.dashboard_link"
                 >
                   Go to Dashboard →
@@ -121,8 +125,12 @@ export function Navbar() {
                 </button>
                 <button
                   type="button"
-                  className="px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,230,118,0.4)] active:scale-95"
-                  style={{ backgroundColor: "#00E676", color: "#050505" }}
+                  className="px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200 hover:shadow-[0_0_28px_rgba(0,230,118,0.6)] active:scale-95"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                    color: "#000000",
+                  }}
                   data-ocid="navbar.post_task_button"
                 >
                   Post a Task
@@ -150,7 +158,7 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden bg-[rgba(5,5,5,0.95)] backdrop-blur-xl border-t border-white/10 px-6 pb-6"
+            className="md:hidden bg-[rgba(0,0,0,0.95)] backdrop-blur-xl border-t border-white/10 px-6 pb-6"
           >
             <nav className="flex flex-col gap-1 pt-4">
               {NAV_LINKS.map((link) => (
@@ -178,7 +186,11 @@ export function Navbar() {
                     <button
                       type="button"
                       className="flex-1 py-2.5 text-sm font-semibold rounded-full text-center"
-                      style={{ backgroundColor: "#00E676", color: "#050505" }}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                        color: "#000000",
+                      }}
                       onClick={() => {
                         setMobileOpen(false);
                         window.location.hash = "dashboard";
@@ -216,7 +228,11 @@ export function Navbar() {
                     <button
                       type="button"
                       className="flex-1 py-2.5 text-sm font-semibold rounded-full"
-                      style={{ backgroundColor: "#00E676", color: "#050505" }}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                        color: "#000000",
+                      }}
                       data-ocid="navbar.post_task_button"
                     >
                       Post a Task

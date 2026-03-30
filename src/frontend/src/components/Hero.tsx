@@ -21,7 +21,10 @@ export function Hero() {
             >
               <span
                 className="w-1.5 h-1.5 rounded-full animate-pulse"
-                style={{ backgroundColor: "#00E676" }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                }}
               />
               Now available in 20+ cities
             </div>
@@ -43,7 +46,11 @@ export function Hero() {
               <button
                 type="button"
                 className="px-8 py-3.5 rounded-full text-sm font-bold transition-all duration-200 hover:shadow-[0_0_30px_rgba(0,230,118,0.45)] active:scale-95"
-                style={{ backgroundColor: "#00E676", color: "#050505" }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
+                  color: "#000000",
+                }}
                 data-ocid="hero.primary_button"
               >
                 Get Started Free
@@ -83,7 +90,7 @@ export function Hero() {
             <motion.div
               className="absolute -top-4 -right-4 rounded-2xl px-4 py-3 border backdrop-blur-md hidden lg:block"
               style={{
-                background: "rgba(14,18,20,0.9)",
+                background: "rgba(0,0,0,0.9)",
                 borderColor: "rgba(0,230,118,0.2)",
               }}
               animate={{ y: [0, -6, 0] }}
@@ -102,7 +109,7 @@ export function Hero() {
             <motion.div
               className="absolute -bottom-4 -left-4 rounded-2xl px-4 py-3 border backdrop-blur-md hidden lg:block"
               style={{
-                background: "rgba(14,18,20,0.9)",
+                background: "rgba(0,0,0,0.9)",
                 borderColor: "rgba(0,230,118,0.2)",
               }}
               animate={{ y: [0, 6, 0] }}

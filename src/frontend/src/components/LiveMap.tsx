@@ -71,7 +71,7 @@ export function LiveMap() {
 
       <section
         className="py-16 px-4"
-        style={{ background: "#050505" }}
+        style={{ background: "#000000" }}
         data-ocid="livemap.section"
       >
         <div className="max-w-6xl mx-auto">
@@ -103,7 +103,8 @@ export function LiveMap() {
               <span
                 className="w-2 h-2 rounded-full"
                 style={{
-                  background: "#00E676",
+                  background:
+                    "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
                   boxShadow: "0 0 6px #00E676",
                   animation: "blinkDot 1.4s ease-in-out infinite",
                   display: "inline-block",
@@ -300,7 +301,7 @@ export function LiveMap() {
               style={{
                 background: "rgba(0,0,0,0.6)",
                 backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: "1px solid rgba(0,230,118,0.12)",
               }}
             >
               <p className="text-white/50 text-xs font-medium">

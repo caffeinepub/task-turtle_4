@@ -11,6 +11,7 @@ import { Navbar } from "./components/Navbar";
 import { OTPVerification } from "./components/OTPVerification";
 import { PaymentDemo } from "./components/PaymentDemo";
 import { TaskTimeline } from "./components/TaskTimeline";
+import { TurtleChatbot } from "./components/TurtleChatbot";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { AdminPage } from "./pages/AdminPage";
 import { BlogPage } from "./pages/BlogPage";
@@ -81,15 +82,69 @@ export default function App() {
   }
 
   // Separate pages via hash routing
-  if (hash === "#admin") return <AdminPage />;
-  if (hash === "#dashboard") return <Dashboard />;
-  if (hash === "#profile") return <MyProfile />;
-  if (hash === "#tasker") return <TaskerPage />;
-  if (hash === "#wallet") return <WalletPage />;
-  if (hash === "#features") return <FeaturesPage />;
-  if (hash === "#how-it-works") return <HowItWorksPage />;
-  if (hash === "#tasks") return <TasksPage />;
-  if (hash === "#blog") return <BlogPage />;
+  if (hash === "#admin")
+    return (
+      <>
+        <AdminPage />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#dashboard")
+    return (
+      <>
+        <Dashboard />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#profile")
+    return (
+      <>
+        <MyProfile />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#tasker")
+    return (
+      <>
+        <TaskerPage />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#wallet")
+    return (
+      <>
+        <WalletPage />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#features")
+    return (
+      <>
+        <FeaturesPage />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#how-it-works")
+    return (
+      <>
+        <HowItWorksPage />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#tasks")
+    return (
+      <>
+        <TasksPage />
+        <TurtleChatbot />
+      </>
+    );
+  if (hash === "#blog")
+    return (
+      <>
+        <BlogPage />
+        <TurtleChatbot />
+      </>
+    );
 
   // Default: Landing page (Home)
   return (
@@ -294,6 +349,9 @@ export default function App() {
         </main>
         <Footer />
       </div>
+
+      {/* Floating Turtle Chatbot — visible on all pages */}
+      <TurtleChatbot />
     </div>
   );
 }

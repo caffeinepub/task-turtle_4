@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
   ClipboardCopy,
   CreditCard,
@@ -11,6 +10,7 @@ import {
   Phone,
   User,
 } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
@@ -57,14 +57,15 @@ function validate(form: FormState): FormErrors {
 }
 
 const inputBase: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
+  background: "rgba(255,255,255,0.06)",
   border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: "10px",
+  borderRadius: "12px",
   color: "white",
   padding: "12px 16px",
   width: "100%",
   fontSize: "14px",
   outline: "none",
+  transition: "border-color 0.15s",
 };
 
 const inputError: React.CSSProperties = {
@@ -91,15 +92,15 @@ function FormField({
     <div>
       <label
         htmlFor={id}
-        className="flex items-center gap-2 mb-2 text-sm font-medium"
-        style={{ color: "rgba(255,255,255,0.7)" }}
+        className="flex items-center gap-2 mb-2 text-sm font-semibold"
+        style={{ color: "rgba(255,255,255,0.65)" }}
       >
         {icon} {label}
         {required && <span style={{ color: "#f87171" }}>*</span>}
       </label>
       {children}
       {error && (
-        <p className="mt-1 text-xs" style={{ color: "#f87171" }}>
+        <p className="mt-1.5 text-xs" style={{ color: "#f87171" }}>
           {error}
         </p>
       )}
@@ -119,13 +120,23 @@ function PrincipalCopyBtn({ text }: { text: string }) {
     <button
       type="button"
       onClick={copy}
-      className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+      style={{
+        background: copied ? `${GREEN}22` : "rgba(255,255,255,0.08)",
+        color: copied ? GREEN : "rgba(255,255,255,0.65)",
+        border: `1px solid ${copied ? `${GREEN}40` : "rgba(255,255,255,0.12)"}`,
+      }}
       title="Copy principal ID"
+      data-ocid="profile.copy_id.button"
     >
       {copied ? (
-        <CheckCircle2 size={14} style={{ color: "#00E676" }} />
+        <>
+          <CheckCircle2 size={12} /> Copied!
+        </>
       ) : (
-        <ClipboardCopy size={14} className="text-white" />
+        <>
+          <ClipboardCopy size={12} /> Copy
+        </>
       )}
     </button>
   );
@@ -150,6 +161,8 @@ export default function MyProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [touched, setTouched] = useState(false);
+
+  const principalText = identity?.getPrincipal().toText() ?? "";
 
   useEffect(() => {
     if (!actor || isFetching) return;
@@ -189,7 +202,7 @@ export default function MyProfile() {
     setErrors(errs);
 
     if (Object.keys(errs).length > 0) {
-      setGlobalError("Please fill all details");
+      setGlobalError("Please fill all required details correctly");
       return;
     }
 
@@ -247,7 +260,8 @@ export default function MyProfile() {
     <div className="min-h-screen" style={{ backgroundColor: "#000000" }}>
       <AppNavbar currentPage="profile" />
 
-      <main className="max-w-xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-4 py-8">
+        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">
             My <span style={{ color: GREEN }}>Profile</span>
@@ -256,9 +270,10 @@ export default function MyProfile() {
             className="text-sm mt-1"
             style={{ color: "rgba(255,255,255,0.45)" }}
           >
-            Manage your personal details
+            Manage your identity and personal details
           </p>
         </div>
+
         {loading ? (
           <div
             className="flex items-center justify-center py-20"
@@ -271,171 +286,246 @@ export default function MyProfile() {
             />
           </div>
         ) : (
-          <div
-            className="rounded-2xl p-6 md:p-8"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(0,230,118,0.12)",
-            }}
-          >
-            {globalError && (
-              <div
-                data-ocid="profile.error_state"
-                className="flex items-center gap-2 mb-6 px-4 py-3 rounded-xl"
-                style={{
-                  background: "rgba(248,113,113,0.12)",
-                  border: "1px solid rgba(248,113,113,0.3)",
-                }}
-              >
-                <AlertCircle
-                  size={16}
-                  style={{ color: "#f87171", flexShrink: 0 }}
-                />
-                <span style={{ color: "#f87171", fontSize: "14px" }}>
-                  {globalError}
-                </span>
-              </div>
-            )}
-
-            {successMsg && (
-              <div
-                data-ocid="profile.success_state"
-                className="flex items-center gap-2 mb-6 px-4 py-3 rounded-xl"
-                style={{
-                  background: "rgba(0,230,118,0.12)",
-                  border: "1px solid rgba(0,230,118,0.3)",
-                }}
-              >
-                <CheckCircle2
-                  size={16}
-                  style={{ color: GREEN, flexShrink: 0 }}
-                />
-                <span
-                  style={{ color: GREEN, fontSize: "14px", fontWeight: 600 }}
-                >
-                  {successMsg}
-                </span>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-5">
-              <FormField
-                id="profile_name"
-                label="Full Name"
-                icon={<User size={14} />}
-                required
-                error={touched ? errors.name : undefined}
-              >
-                <input
-                  id="profile_name"
-                  data-ocid="profile.name.input"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={form.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
-                  style={touched && errors.name ? inputError : inputBase}
-                />
-              </FormField>
-
-              {/* Principal ID display */}
-              <div>
-                <p
-                  className="flex items-center gap-2 mb-2 text-sm font-medium"
-                  style={{ color: "rgba(255,255,255,0.7)" }}
-                >
-                  <Fingerprint size={14} />
-                  Your Unique ID (Principal)
-                </p>
+          <div className="flex flex-col gap-6">
+            {/* Principal ID Hero Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="rounded-2xl p-6"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: `1px solid ${GREEN}30`,
+                backdropFilter: "blur(16px)",
+                boxShadow: `0 0 32px ${GREEN}0d`,
+              }}
+              data-ocid="profile.id.card"
+            >
+              <div className="flex items-center gap-3 mb-4">
                 <div
-                  className="flex items-center gap-2"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{
-                    ...inputBase,
-                    cursor: "default",
-                    userSelect: "all",
-                    padding: "10px 16px",
-                    background: "rgba(0,230,118,0.04)",
-                    border: "1px solid rgba(0,230,118,0.15)",
+                    background: `${GREEN}18`,
+                    border: `1px solid ${GREEN}35`,
                   }}
                 >
-                  <span
-                    className="font-mono text-xs flex-1 truncate"
-                    style={{ color: "#00E676", letterSpacing: "0.02em" }}
-                    title={identity?.getPrincipal().toText()}
-                  >
-                    {identity?.getPrincipal().toText() ?? "—"}
-                  </span>
-                  <PrincipalCopyBtn
-                    text={identity?.getPrincipal().toText() ?? ""}
-                  />
+                  <Fingerprint size={18} style={{ color: GREEN }} />
                 </div>
-                <p
-                  className="mt-1 text-[11px]"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
-                >
-                  This is your unique blockchain identity — read-only
-                </p>
+                <div>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ color: "rgba(255,255,255,0.55)" }}
+                  >
+                    Your Unique ID
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: "rgba(255,255,255,0.3)" }}
+                  >
+                    Blockchain identity — used by admin to track your data
+                  </p>
+                </div>
               </div>
 
-              <FormField
-                id="profile_phone"
-                label="Phone Number"
-                icon={<Phone size={14} />}
-                required
-                error={touched ? errors.phone : undefined}
+              <div
+                className="rounded-xl px-4 py-3 mb-4 flex items-center gap-3"
+                style={{
+                  background: `${GREEN}08`,
+                  border: `1px solid ${GREEN}25`,
+                }}
               >
-                <input
+                <span
+                  className="font-mono text-sm flex-1 break-all"
+                  style={{ color: GREEN, letterSpacing: "0.04em" }}
+                  data-ocid="profile.principal_id.input"
+                >
+                  {principalText || "—"}
+                </span>
+                <PrincipalCopyBtn text={principalText} />
+              </div>
+
+              <p
+                className="text-xs"
+                style={{ color: "rgba(255,255,255,0.25)" }}
+              >
+                🔒 This ID is read-only and linked to your Internet Identity
+                wallet
+              </p>
+            </motion.div>
+
+            {/* Profile Form Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.08 }}
+              className="rounded-2xl p-6"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(0,230,118,0.12)",
+                backdropFilter: "blur(16px)",
+              }}
+              data-ocid="profile.form.card"
+            >
+              {/* Section label */}
+              <div className="flex items-center gap-2 mb-6">
+                <User size={15} style={{ color: GREEN }} />
+                <h2
+                  className="text-sm font-bold tracking-wider"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  PERSONAL DETAILS
+                </h2>
+              </div>
+
+              {/* Global error */}
+              {globalError && (
+                <div
+                  data-ocid="profile.error_state"
+                  className="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl"
+                  style={{
+                    background: "rgba(248,113,113,0.1)",
+                    border: "1px solid rgba(248,113,113,0.3)",
+                  }}
+                >
+                  <AlertCircle
+                    size={15}
+                    style={{ color: "#f87171", flexShrink: 0 }}
+                  />
+                  <span style={{ color: "#f87171", fontSize: "13px" }}>
+                    {globalError}
+                  </span>
+                </div>
+              )}
+
+              {/* Success banner */}
+              {successMsg && (
+                <div
+                  data-ocid="profile.success_state"
+                  className="flex items-center gap-2 mb-5 px-4 py-3 rounded-xl"
+                  style={{
+                    background: "rgba(0,230,118,0.1)",
+                    border: "1px solid rgba(0,230,118,0.3)",
+                  }}
+                >
+                  <CheckCircle2
+                    size={15}
+                    style={{ color: GREEN, flexShrink: 0 }}
+                  />
+                  <span
+                    style={{ color: GREEN, fontSize: "13px", fontWeight: 600 }}
+                  >
+                    {successMsg}
+                  </span>
+                </div>
+              )}
+
+              {/* 2-column grid on desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                <FormField
+                  id="profile_name"
+                  label="Full Name"
+                  icon={<User size={13} />}
+                  required
+                  error={touched ? errors.name : undefined}
+                >
+                  <input
+                    id="profile_name"
+                    data-ocid="profile.name.input"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={form.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    style={touched && errors.name ? inputError : inputBase}
+                  />
+                </FormField>
+
+                <FormField
                   id="profile_phone"
-                  data-ocid="profile.phone.input"
-                  type="tel"
-                  placeholder="10-digit mobile number"
-                  value={form.phone}
-                  onChange={(e) =>
-                    handleChange(
-                      "phone",
-                      e.target.value.replace(/\D/g, "").slice(0, 10),
-                    )
-                  }
-                  style={touched && errors.phone ? inputError : inputBase}
-                />
-              </FormField>
+                  label="Phone Number"
+                  icon={<Phone size={13} />}
+                  required
+                  error={touched ? errors.phone : undefined}
+                >
+                  <input
+                    id="profile_phone"
+                    data-ocid="profile.phone.input"
+                    type="tel"
+                    placeholder="10-digit mobile number"
+                    value={form.phone}
+                    onChange={(e) =>
+                      handleChange(
+                        "phone",
+                        e.target.value.replace(/\D/g, "").slice(0, 10),
+                      )
+                    }
+                    style={touched && errors.phone ? inputError : inputBase}
+                  />
+                </FormField>
 
-              <FormField
-                id="profile_location"
-                label="Location"
-                icon={<MapPin size={14} />}
-                required
-                error={touched ? errors.location : undefined}
-              >
-                <input
+                <FormField
                   id="profile_location"
-                  data-ocid="profile.location.input"
-                  type="text"
-                  placeholder="City, Address"
-                  value={form.location}
-                  onChange={(e) => handleChange("location", e.target.value)}
-                  style={touched && errors.location ? inputError : inputBase}
-                />
-              </FormField>
+                  label="Location"
+                  icon={<MapPin size={13} />}
+                  required
+                  error={touched ? errors.location : undefined}
+                >
+                  <input
+                    id="profile_location"
+                    data-ocid="profile.location.input"
+                    type="text"
+                    placeholder="City, Address"
+                    value={form.location}
+                    onChange={(e) => handleChange("location", e.target.value)}
+                    style={touched && errors.location ? inputError : inputBase}
+                  />
+                </FormField>
 
-              <FormField
-                id="profile_upi"
-                label="UPI ID"
-                icon={<CreditCard size={14} />}
-                required
-                error={touched ? errors.upiId : undefined}
-              >
-                <input
+                <FormField
                   id="profile_upi"
-                  data-ocid="profile.upi.input"
-                  type="text"
-                  placeholder="yourname@upi"
-                  value={form.upiId}
-                  onChange={(e) => handleChange("upiId", e.target.value)}
-                  style={touched && errors.upiId ? inputError : inputBase}
-                />
-              </FormField>
+                  label="UPI ID"
+                  icon={<CreditCard size={13} />}
+                  required
+                  error={touched ? errors.upiId : undefined}
+                >
+                  <input
+                    id="profile_upi"
+                    data-ocid="profile.upi.input"
+                    type="text"
+                    placeholder="yourname@upi"
+                    value={form.upiId}
+                    onChange={(e) => handleChange("upiId", e.target.value)}
+                    style={touched && errors.upiId ? inputError : inputBase}
+                  />
+                </FormField>
+              </div>
 
-              {/* Identity Section */}
+              {/* Divider */}
+              <div
+                className="h-px w-full mb-5"
+                style={{ background: "rgba(255,255,255,0.07)" }}
+              />
+
+              {/* Identity Verification */}
+              <div className="flex items-center gap-2 mb-4">
+                <IdCard size={15} style={{ color: GREEN }} />
+                <h2
+                  className="text-sm font-bold tracking-wider"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  IDENTITY VERIFICATION
+                </h2>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "rgba(248,113,113,0.12)",
+                    color: "#f87171",
+                    border: "1px solid rgba(248,113,113,0.25)",
+                  }}
+                >
+                  At least one required
+                </span>
+              </div>
+
               <div
                 className="rounded-xl p-4"
                 style={{
@@ -443,20 +533,11 @@ export default function MyProfile() {
                   border: "1px solid rgba(0,230,118,0.08)",
                 }}
               >
-                <p
-                  className="text-xs font-semibold mb-4 flex items-center gap-1.5"
-                  style={{ color: "rgba(255,255,255,0.5)" }}
-                >
-                  <IdCard size={13} />
-                  IDENTITY VERIFICATION — Fill at least one
-                  <span style={{ color: "#f87171" }}>*</span>
-                </p>
-
                 <div className="mb-4">
                   <label
                     htmlFor="profile_aadhar"
-                    className="block mb-2 text-sm font-medium"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
+                    className="block mb-2 text-sm font-semibold"
+                    style={{ color: "rgba(255,255,255,0.65)" }}
                   >
                     Aadhar Card Number
                   </label>
@@ -488,7 +569,7 @@ export default function MyProfile() {
                     style={{ background: "rgba(255,255,255,0.08)" }}
                   />
                   <span
-                    className="text-xs"
+                    className="text-xs font-semibold"
                     style={{ color: "rgba(255,255,255,0.3)" }}
                   >
                     OR
@@ -502,8 +583,8 @@ export default function MyProfile() {
                 <div>
                   <label
                     htmlFor="profile_student"
-                    className="block mb-2 text-sm font-medium"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
+                    className="block mb-2 text-sm font-semibold"
+                    style={{ color: "rgba(255,255,255,0.65)" }}
                   >
                     Student ID
                   </label>
@@ -531,16 +612,20 @@ export default function MyProfile() {
                 )}
               </div>
 
+              {/* Save Button */}
               <button
                 type="button"
                 data-ocid="profile.save_button"
                 onClick={handleSave}
                 disabled={saveDisabled}
-                className="w-full py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                className="w-full mt-6 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
                 style={{
-                  background: saveDisabled ? "rgba(0,230,118,0.3)" : GREEN,
+                  background: saveDisabled
+                    ? "rgba(0,230,118,0.25)"
+                    : "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)",
                   color: saveDisabled ? "rgba(0,0,0,0.4)" : "#000000",
                   cursor: saveDisabled ? "not-allowed" : "pointer",
+                  boxShadow: saveDisabled ? "none" : `0 0 20px ${GREEN}40`,
                 }}
               >
                 {saving ? (
@@ -552,7 +637,7 @@ export default function MyProfile() {
                   "Save Profile"
                 )}
               </button>
-            </div>
+            </motion.div>
           </div>
         )}
       </main>

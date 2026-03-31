@@ -24,7 +24,11 @@ import type {
 import { PaymentStatus, TaskStatus } from "../backend.d";
 import { useActor } from "../hooks/useActor";
 
-import { calculatePlatformFee, getTaskerEarning } from "../utils/platformFee";
+import {
+  calculateCommission,
+  calculatePlatformFee,
+  getTaskerEarning,
+} from "../utils/platformFee";
 
 const G = "#00E676";
 const CARD = "rgba(255,255,255,0.04)";
@@ -238,7 +242,15 @@ function OverviewTab({
   ).size;
   const platformFees = payments
     .filter((p) => p.status === PaymentStatus.COMPLETED)
-    .reduce((acc, p) => acc + calculatePlatformFee(Number(p.amount)), 0);
+    .reduce((acc, p) => {
+      const relatedTask = tasks.find((t) => t.id === p.taskId);
+      const pa = relatedTask
+        ? Number(relatedTask.productAmount ?? 0n)
+        : Number(p.amount);
+      const tf = relatedTask ? Number(relatedTask.taskerFee ?? 0n) : 0;
+      const b = relatedTask ? Number(relatedTask.boost ?? 0n) : 0;
+      return acc + calculatePlatformFee(pa) + calculateCommission(tf, b);
+    }, 0);
 
   const stats = [
     {
@@ -392,7 +404,23 @@ function OverviewTab({
                     </span>
                     <CopyBtn text={t.poster.toString()} />
                   </td>
-                  <td className="py-2.5 text-white">{formatINR(t.amount)}</td>
+                  <td className="py-2.5 text-white">
+                    {formatINR(t.amount)}
+                    {Number(t.productAmount ?? 0n) > 0 && (
+                      <div
+                        style={{
+                          color: "rgba(255,255,255,0.4)",
+                          fontSize: "0.7rem",
+                        }}
+                      >
+                        Item ₹{Number(t.productAmount)} | Fee ₹
+                        {Number(t.taskerFee ?? 0n)}
+                        {Number(t.boost ?? 0n) > 0
+                          ? `| Boost ₹${Number(t.boost ?? 0n)}`
+                          : ""}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2.5">
                     <StatusBadge status={t.status} />
                   </td>
@@ -521,6 +549,20 @@ function AllTasksTab({
                     </td>
                     <td className="px-4 py-3 text-white">
                       {formatINR(t.amount)}
+                      {Number(t.productAmount ?? 0n) > 0 && (
+                        <div
+                          style={{
+                            color: "rgba(255,255,255,0.4)",
+                            fontSize: "0.7rem",
+                          }}
+                        >
+                          Item ₹{Number(t.productAmount)} | Fee ₹
+                          {Number(t.taskerFee ?? 0n)}
+                          {Number(t.boost ?? 0n) > 0
+                            ? `| Boost ₹${Number(t.boost ?? 0n)}`
+                            : ""}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={t.status} />
@@ -909,7 +951,14 @@ function TaskersTab({
     if (t.status === TaskStatus.accepted) isActive = true;
     if (t.status === TaskStatus.completed) {
       completed += 1;
-      earned += getTaskerEarning(Number(t.amount));
+      const tf = Number(t.taskerFee ?? 0n);
+      const b = Number(t.boost ?? 0n);
+      const pa = Number(t.productAmount ?? 0n);
+      if (pa > 0 || tf > 0) {
+        earned += pa + tf + b - calculateCommission(tf, b);
+      } else {
+        earned += getTaskerEarning(Number(t.amount));
+      }
       const pmt = payments.find((p) => p.taskId === t.id);
       if (pmt?.taskerUpiId) upiId = pmt.taskerUpiId;
     }
@@ -1334,9 +1383,11 @@ function PaymentsTab({
 // ─────────────────── Payouts ───────────────────
 function PayoutsTab({
   payments,
+  tasks,
   onMarkPaid,
 }: {
   payments: EscrowPayment[];
+  tasks: PublicTask[];
   onMarkPaid: (paymentId: string) => Promise<void>;
 }) {
   const [marking, setMarking] = useState<string | null>(null);
@@ -1348,10 +1399,15 @@ function PayoutsTab({
   );
   const pendingAmt = pending.reduce((a, p) => a + Number(p.amount), 0);
   const completedAmt = completed.reduce((a, p) => a + Number(p.amount), 0);
-  const platformRevenue = completed.reduce(
-    (a, p) => a + calculatePlatformFee(Number(p.amount)),
-    0,
-  );
+  const platformRevenue = completed.reduce((a, p) => {
+    const relatedTask = tasks.find((t) => t.id === p.taskId);
+    const pa = relatedTask
+      ? Number(relatedTask.productAmount ?? 0n)
+      : Number(p.amount);
+    const tf = relatedTask ? Number(relatedTask.taskerFee ?? 0n) : 0;
+    const b = relatedTask ? Number(relatedTask.boost ?? 0n) : 0;
+    return a + calculatePlatformFee(pa) + calculateCommission(tf, b);
+  }, 0);
 
   let filteredPayments = payments;
   if (search) {
@@ -1434,13 +1490,41 @@ function PayoutsTab({
                     {formatINR(p.amount)}
                   </span>
                   <span className="text-white/50">
-                    Tasker gets:{" "}
-                    <span style={{ color: G }}>
-                      ₹
-                      {getTaskerEarning(Number(p.amount)).toLocaleString(
-                        "en-IN",
-                      )}
-                    </span>
+                    Tasker gets: {(() => {
+                      const relatedTask = tasks.find((t) => t.id === p.taskId);
+                      const tf = relatedTask
+                        ? Number(relatedTask.taskerFee ?? 0n)
+                        : 0;
+                      const b = relatedTask
+                        ? Number(relatedTask.boost ?? 0n)
+                        : 0;
+                      const pa = relatedTask
+                        ? Number(relatedTask.productAmount ?? 0n)
+                        : 0;
+                      const commission = calculateCommission(tf, b);
+                      const taskerGets =
+                        pa > 0 || tf > 0
+                          ? pa + tf + b - commission
+                          : getTaskerEarning(Number(p.amount));
+                      return (
+                        <>
+                          <span style={{ color: G }}>
+                            ₹{taskerGets.toLocaleString("en-IN")}
+                          </span>
+                          {(pa > 0 || tf > 0) && (
+                            <div
+                              style={{
+                                color: "rgba(255,255,255,0.4)",
+                                fontSize: "0.7rem",
+                              }}
+                            >
+                              Item ₹{pa} + Earn ₹{tf + b - commission} = ₹
+                              {taskerGets}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </span>
                   <span className="text-white/40 flex items-center gap-1">
                     UPI: {p.taskerUpiId || "—"}
@@ -2088,7 +2172,11 @@ export function AdminDashboard() {
               <PaymentsTab payments={payments} onMarkPaid={handleMarkPaid} />
             )}
             {tab === "payouts" && (
-              <PayoutsTab payments={payments} onMarkPaid={handleMarkPaid} />
+              <PayoutsTab
+                payments={payments}
+                tasks={tasks}
+                onMarkPaid={handleMarkPaid}
+              />
             )}
             {tab === "profiles" && (
               <ProfilesTab profileMap={profileMap} tasks={tasks} />

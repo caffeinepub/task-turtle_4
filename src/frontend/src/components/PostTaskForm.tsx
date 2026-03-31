@@ -140,6 +140,8 @@ export default function PostTaskForm() {
         fields.category,
         fields.storeLocation,
         BigInt(Math.round(finalAmount)),
+        0n,
+        0n,
       );
 
       if (id === null) {

@@ -124,6 +124,9 @@ export interface PublicTask {
     amount: bigint;
     location: string;
     poster: Principal;
+    taskerFee: bigint;
+    boost: bigint;
+    productAmount: bigint;
 }
 export interface TaskStageResponse {
     stage: string;
@@ -193,7 +196,7 @@ export interface backendInterface {
     completeTask(taskId: string, submittedOtp: string): Promise<PublicTask | null>;
     countTasks(): Promise<bigint>;
     createRazorpayOrder(amount: bigint, taskId: string, _userId: string, _taskerUpiId: string): Promise<Result>;
-    createTask(title: string, description: string, category: string, location: string, amount: bigint): Promise<string | null>;
+    createTask(title: string, description: string, category: string, location: string, amount: bigint, taskerFee: bigint, boost: bigint): Promise<string | null>;
     getAllTasks(): Promise<Array<PublicTask>>;
     getAllUserProfiles(): Promise<Array<UserProfileEntry>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -328,17 +331,17 @@ export class Backend implements backendInterface {
             return from_candid_Result_n8(this._uploadFile, this._downloadFile, result);
         }
     }
-    async createTask(arg0: string, arg1: string, arg2: string, arg3: string, arg4: bigint): Promise<string | null> {
+    async createTask(arg0: string, arg1: string, arg2: string, arg3: string, arg4: bigint, arg5: bigint, arg6: bigint): Promise<string | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.createTask(arg0, arg1, arg2, arg3, arg4);
+                const result = await this.actor.createTask(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
                 return from_candid_opt_n12(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createTask(arg0, arg1, arg2, arg3, arg4);
+            const result = await this.actor.createTask(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
             return from_candid_opt_n12(this._uploadFile, this._downloadFile, result);
         }
     }

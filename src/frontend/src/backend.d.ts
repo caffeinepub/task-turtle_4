@@ -42,6 +42,9 @@ export interface PublicTask {
     amount: bigint;
     location: string;
     poster: Principal;
+    taskerFee: bigint;
+    boost: bigint;
+    productAmount: bigint;
 }
 export interface TaskStageResponse {
     stage: string;
@@ -110,7 +113,7 @@ export interface backendInterface {
     completeTask(taskId: string, submittedOtp: string): Promise<PublicTask | null>;
     countTasks(): Promise<bigint>;
     createRazorpayOrder(amount: bigint, taskId: string, _userId: string, _taskerUpiId: string): Promise<Result>;
-    createTask(title: string, description: string, category: string, location: string, amount: bigint): Promise<string | null>;
+    createTask(title: string, description: string, category: string, location: string, amount: bigint, taskerFee: bigint, boost: bigint): Promise<string | null>;
     getAllTasks(): Promise<Array<PublicTask>>;
     getAllUserProfiles(): Promise<Array<UserProfileEntry>>;
     getCallerUserProfile(): Promise<UserProfile | null>;

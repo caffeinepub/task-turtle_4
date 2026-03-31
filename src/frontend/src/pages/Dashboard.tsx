@@ -805,7 +805,9 @@ function PostTaskTab() {
             description,
             fields.category,
             location,
-            BigInt(Math.round(totalPayable)),
+            BigInt(Math.round(effectiveBase)),
+            BigInt(taskerFee),
+            BigInt(boost),
           );
           if (id === null) {
             setSubmitError(
@@ -1545,16 +1547,63 @@ function FindTasksTab() {
                     </p>
                   )}
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-base font-bold" style={{ color: GREEN }}>
-                    ₹{task.amount.toString()}
-                  </p>
-                  <p
-                    className="text-xs"
-                    style={{ color: "rgba(0,230,118,0.7)" }}
-                  >
-                    You earn ₹{earning}
-                  </p>
+                <div className="shrink-0">
+                  {Number(task.productAmount) > 0 ? (
+                    <div className="flex flex-col gap-0.5 text-right">
+                      <div
+                        className="text-xs"
+                        style={{ color: "rgba(255,255,255,0.45)" }}
+                      >
+                        Buy Item: ₹{Number(task.productAmount)}
+                      </div>
+                      <div
+                        className="text-xs font-semibold"
+                        style={{ color: GREEN }}
+                      >
+                        Tasker Fee: ₹{Number(task.taskerFee)}
+                        {Number(task.boost) > 0 && (
+                          <span className="ml-1" style={{ color: "#00ff90" }}>
+                            +₹{Number(task.boost)} boost
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        className="text-sm font-bold mt-0.5 px-2 py-0.5 rounded-lg"
+                        style={{
+                          background: "rgba(0,230,118,0.12)",
+                          color: GREEN,
+                          border: "1px solid rgba(0,230,118,0.25)",
+                        }}
+                      >
+                        Total You Get: ₹
+                        {Number(task.productAmount) +
+                          Number(task.taskerFee) +
+                          Number(task.boost)}
+                      </div>
+                      <div
+                        className="text-xs font-semibold"
+                        style={{ color: "#00ff90" }}
+                      >
+                        Your Profit: ₹
+                        {Number(task.taskerFee) + Number(task.boost)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-right">
+                      <p
+                        className="text-base font-bold"
+                        style={{ color: GREEN }}
+                      >
+                        ₹{task.amount.toString()}
+                      </p>
+                      <p
+                        className="text-xs"
+                        style={{ color: "rgba(0,230,118,0.7)" }}
+                      >
+                        You earn ₹{earning}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">

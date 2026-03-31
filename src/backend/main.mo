@@ -105,6 +105,13 @@ actor {
     completedAt : ?Int;
   };
 
+  // Pricing breakdown stored separately
+  type TaskPricing = {
+    taskerFee : Nat;
+    boost : Nat;
+    productAmount : Nat;
+  };
+
   // Public task type without OTP (for queries)
   public type PublicTask = {
     id : Text;
@@ -119,6 +126,9 @@ actor {
     createdAt : Int;
     acceptedAt : ?Int;
     completedAt : ?Int;
+    taskerFee : Nat;
+    boost : Nat;
+    productAmount : Nat;
   };
 
   // Authorization state
@@ -131,6 +141,7 @@ actor {
   // Separate map for task timestamps — avoids breaking stable Task type
   let taskTimestamps = Map.empty<Text, TaskTimestamps>();
   let taskStages = Map.empty<Text, TaskStageRecord>();
+  let taskPricing = Map.empty<Text, TaskPricing>();
 
   // Razorpay Basic Auth: base64(key_id:key_secret)
   let RAZORPAY_BASIC_AUTH = "cnpwX2xpdmVfU1JOYlR3eUVtelFTdk86MEszRTBxMFJJSmhoNDROUUw0YmZnSW5m";
@@ -278,6 +289,10 @@ actor {
     let ts = taskTimestamps.get(task.id);
     let acceptedAt : ?Int = switch (ts) { case (?t) { t.acceptedAt }; case (null) { null } };
     let completedAt : ?Int = switch (ts) { case (?t) { t.completedAt }; case (null) { null } };
+    let pricing = taskPricing.get(task.id);
+    let taskerFee : Nat = switch (pricing) { case (?p) { p.taskerFee }; case (null) { 0 } };
+    let boost : Nat = switch (pricing) { case (?p) { p.boost }; case (null) { 0 } };
+    let productAmount : Nat = switch (pricing) { case (?p) { p.productAmount }; case (null) { 0 } };
     {
       id = task.id;
       title = task.title;
@@ -291,11 +306,14 @@ actor {
       createdAt = task.createdAt;
       acceptedAt;
       completedAt;
+      taskerFee;
+      boost;
+      productAmount;
     };
   };
 
   // Task Management
-  public shared ({ caller }) func createTask(title : Text, description : Text, category : Text, location : Text, amount : Nat) : async ?Text {
+  public shared ({ caller }) func createTask(title : Text, description : Text, category : Text, location : Text, amount : Nat, taskerFee : Nat, boost : Nat) : async ?Text {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create tasks");
     };
@@ -315,6 +333,8 @@ actor {
       createdAt = Time.now();
     };
     tasks.add(taskId, newTask);
+    // Store pricing breakdown
+    taskPricing.add(taskId, { taskerFee; boost; productAmount = amount });
     // Set initial stage
     taskStages.add(taskId, { stage = #posted; timestamp = Time.now() });
     ?taskId;

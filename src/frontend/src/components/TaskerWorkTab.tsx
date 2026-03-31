@@ -103,13 +103,50 @@ function TaskStageCard({
             )}
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-white font-bold text-sm">
-            ₹{Number(task.amount)}
-          </div>
-          <div className="text-xs font-semibold" style={{ color: GREEN }}>
-            You earn ₹{earning}
-          </div>
+        <div className="shrink-0">
+          {Number(task.productAmount) > 0 ? (
+            <div className="flex flex-col gap-0.5 text-right">
+              <div
+                className="text-xs"
+                style={{ color: "rgba(255,255,255,0.45)" }}
+              >
+                Buy Item: ₹{Number(task.productAmount)}
+              </div>
+              <div className="text-xs font-semibold" style={{ color: GREEN }}>
+                Earn: ₹{Number(task.taskerFee) + Number(task.boost)}
+                {Number(task.boost) > 0 && (
+                  <span
+                    className="ml-1 text-xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    (incl. ₹{Number(task.boost)} boost)
+                  </span>
+                )}
+              </div>
+              <div
+                className="text-xs font-bold px-1.5 py-0.5 rounded-lg mt-0.5"
+                style={{
+                  background: "rgba(0,230,118,0.12)",
+                  color: GREEN,
+                  border: "1px solid rgba(0,230,118,0.2)",
+                }}
+              >
+                Total: ₹
+                {Number(task.productAmount) +
+                  Number(task.taskerFee) +
+                  Number(task.boost)}
+              </div>
+            </div>
+          ) : (
+            <div className="text-right">
+              <div className="text-white font-bold text-sm">
+                ₹{Number(task.amount)}
+              </div>
+              <div className="text-xs font-semibold" style={{ color: GREEN }}>
+                You earn ₹{earning}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -280,7 +317,11 @@ function TaskStageCard({
             style={{ color: GREEN }}
           >
             <CheckCircle2 size={16} />
-            Task completed! Earnings: ₹{earning}
+            Task completed! Earnings: ₹
+            {Number(task.productAmount) > 0
+              ? Number(task.taskerFee) + Number(task.boost)
+              : earning}{" "}
+            profit
           </motion.div>
         )}
       </AnimatePresence>

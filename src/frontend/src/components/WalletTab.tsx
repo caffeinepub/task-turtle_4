@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { type PublicTask, TaskStatus } from "../backend";
 import { useActor } from "../hooks/useActor";
-import { getPlatformFee, getTaskerEarning } from "../utils/platformFee";
+import { calculatePlatformFee, getTaskerEarning } from "../utils/platformFee";
 
 const GREEN = "#00E676";
 
@@ -129,12 +129,12 @@ export function WalletTab() {
           color: "rgba(255,255,255,0.4)",
         }}
       >
-        💡 Task Turtle charges a{" "}
+        💡 Task Turtle charges a tiered platform fee (₹4–₹10) plus{" "}
         <strong style={{ color: "rgba(255,255,255,0.65)" }}>
-          5% platform fee
+          15% commission
         </strong>{" "}
-        on all tasks. You receive <strong style={{ color: GREEN }}>95%</strong>{" "}
-        of the task amount.
+        on tasker fee &amp; boost. Your payout includes the full product amount
+        + tasker fee &amp; boost after commission.
       </div>
 
       {/* Earnings history */}
@@ -166,7 +166,7 @@ export function WalletTab() {
           <div className="flex flex-col gap-3" data-ocid="wallet.earnings.list">
             {completedTasks.map((task, i) => {
               const gross = Number(task.amount);
-              const fee = getPlatformFee(gross);
+              const fee = calculatePlatformFee(gross);
               const net = getTaskerEarning(gross);
               return (
                 <motion.div
@@ -207,7 +207,7 @@ export function WalletTab() {
                         className="text-xs"
                         style={{ color: "rgba(255,255,255,0.4)" }}
                       >
-                        Fee (5%)
+                        Platform Fee
                       </div>
                       <div style={{ color: "#ff6b6b" }}>−₹{fee}</div>
                     </div>

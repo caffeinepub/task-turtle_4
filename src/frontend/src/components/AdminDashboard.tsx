@@ -24,6 +24,8 @@ import type {
 import { PaymentStatus, TaskStatus } from "../backend.d";
 import { useActor } from "../hooks/useActor";
 
+import { calculatePlatformFee, getTaskerEarning } from "../utils/platformFee";
+
 const G = "#00E676";
 const CARD = "rgba(255,255,255,0.04)";
 const BORDER = "1px solid rgba(0,230,118,0.12)";
@@ -236,7 +238,7 @@ function OverviewTab({
   ).size;
   const platformFees = payments
     .filter((p) => p.status === PaymentStatus.COMPLETED)
-    .reduce((acc, p) => acc + Number(p.amount) * 0.05, 0);
+    .reduce((acc, p) => acc + calculatePlatformFee(Number(p.amount)), 0);
 
   const stats = [
     {
@@ -258,7 +260,7 @@ function OverviewTab({
       color: "#A78BFA",
     },
     {
-      label: "Platform Fees",
+      label: "Platform Fee",
       value: `₹${Math.round(platformFees).toLocaleString("en-IN")}`,
       icon: DollarSign,
       color: "#FBBF24",
@@ -907,7 +909,7 @@ function TaskersTab({
     if (t.status === TaskStatus.accepted) isActive = true;
     if (t.status === TaskStatus.completed) {
       completed += 1;
-      earned += Number(t.amount) * 0.95;
+      earned += getTaskerEarning(Number(t.amount));
       const pmt = payments.find((p) => p.taskId === t.id);
       if (pmt?.taskerUpiId) upiId = pmt.taskerUpiId;
     }
@@ -1347,7 +1349,7 @@ function PayoutsTab({
   const pendingAmt = pending.reduce((a, p) => a + Number(p.amount), 0);
   const completedAmt = completed.reduce((a, p) => a + Number(p.amount), 0);
   const platformRevenue = completed.reduce(
-    (a, p) => a + Number(p.amount) * 0.05,
+    (a, p) => a + calculatePlatformFee(Number(p.amount)),
     0,
   );
 
@@ -1386,7 +1388,7 @@ function PayoutsTab({
           {
             label: "Platform Revenue",
             value: `₹${Math.round(platformRevenue).toLocaleString("en-IN")}`,
-            sub: "5% of completed",
+            sub: "Tiered fee + 15% commission",
             color: "#A78BFA",
           },
         ].map((s) => (
@@ -1435,7 +1437,7 @@ function PayoutsTab({
                     Tasker gets:{" "}
                     <span style={{ color: G }}>
                       ₹
-                      {Math.round(Number(p.amount) * 0.95).toLocaleString(
+                      {getTaskerEarning(Number(p.amount)).toLocaleString(
                         "en-IN",
                       )}
                     </span>

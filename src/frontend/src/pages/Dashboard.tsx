@@ -19,7 +19,7 @@ import {
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { getTaskerEarning } from "../utils/platformFee";
+import { calculateTotalPayable, getTaskerEarning } from "../utils/platformFee";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
 import { DEFAULT_TASK_IMAGE, getTaskImage } from "../utils/taskImage";
 
@@ -690,7 +690,6 @@ type Category =
   | "Courier"
   | "Cleaning"
   | "Other";
-type Tip = 20 | 50 | 100 | null;
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: "Grocery", label: "🛒 Grocery" },
@@ -699,12 +698,6 @@ const CATEGORIES: { value: Category; label: string }[] = [
   { value: "Courier", label: "🚴 Courier" },
   { value: "Cleaning", label: "🧹 Cleaning" },
   { value: "Other", label: "✨ Other" },
-];
-
-const TIP_OPTIONS: { label: string; value: 20 | 50 | 100 }[] = [
-  { label: "₹20", value: 20 },
-  { label: "₹50", value: 50 },
-  { label: "₹100", value: 100 },
 ];
 
 const inputBase: React.CSSProperties = {
@@ -719,6 +712,9 @@ function PostTaskTab() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [taskerFee, setTaskerFee] = useState<number>(15);
+  const [taskerFeeCustom, setTaskerFeeCustom] = useState<string>("");
+  const [boost, setBoost] = useState<number>(0);
   const [fields, setFields] = useState({
     title: "",
     description: "",
@@ -726,16 +722,19 @@ function PostTaskTab() {
     deliveryLocation: "",
     contactNumber: "",
     amount: "",
-    tip: null as Tip,
     category: "" as Category,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const baseAmount = Number(fields.amount);
-  const tipAmount = fields.tip ?? 0;
   const surgePrice =
     surgeActive && baseAmount > 0 ? getSurgePrice(baseAmount) : null;
-  const finalAmount = (surgePrice ?? baseAmount) + tipAmount;
+  const effectiveBase = surgePrice ?? baseAmount;
+  const totalPayable =
+    effectiveBase > 0
+      ? calculateTotalPayable(effectiveBase, taskerFee, boost)
+      : 0;
+  const taskerFeeValid = taskerFee >= 10;
 
   function validate() {
     const e: Record<string, string> = {};
@@ -745,6 +744,7 @@ function PostTaskTab() {
       e.pickupLocation = "Pickup location is required.";
     if (!fields.amount || Number(fields.amount) <= 0)
       e.amount = "Enter a valid amount.";
+    if (taskerFee < 10) e.taskerFee = "Increase tasker fee to continue.";
     return e;
   }
 
@@ -777,7 +777,7 @@ function PostTaskTab() {
 
     const options = {
       key: "rzp_live_SRNbTwyEmzQSvO",
-      amount: finalAmount * 100,
+      amount: totalPayable * 100,
       currency: "INR",
       name: "Task Turtle",
       description: fields.title || "Task Payment",
@@ -796,7 +796,7 @@ function PostTaskTab() {
             response.razorpay_order_id || "",
             "",
             pendingTaskId,
-            BigInt(Math.round(finalAmount)),
+            BigInt(Math.round(totalPayable)),
             "",
             "",
           );
@@ -805,7 +805,7 @@ function PostTaskTab() {
             description,
             fields.category,
             location,
-            BigInt(Math.round(finalAmount)),
+            BigInt(Math.round(totalPayable)),
           );
           if (id === null) {
             setSubmitError(
@@ -851,9 +851,11 @@ function PostTaskTab() {
       deliveryLocation: "",
       contactNumber: "",
       amount: "",
-      tip: null,
       category: "",
     });
+    setTaskerFee(15);
+    setTaskerFeeCustom("");
+    setBoost(0);
     setErrors({});
     setSubmitted(false);
     setTaskId(null);
@@ -1135,45 +1137,174 @@ function PostTaskTab() {
         </div>
       </div>
 
-      {/* Tip */}
+      {/* Tasker Fee */}
+      <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-0.5">
+          <p
+            className="text-xs font-medium uppercase tracking-wide"
+            style={{ color: "rgba(255,255,255,0.5)" }}
+          >
+            Tasker Fee <span style={{ color: "#f87171" }}>*</span>
+          </p>
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+            Higher fee helps your task get accepted faster ⚡
+          </p>
+        </div>
+        {/* Preset buttons */}
+        <div className="grid grid-cols-4 gap-2">
+          {(
+            [
+              { value: 10, label: "₹10", sub: "Economy 🐢" },
+              {
+                value: 15,
+                label: "₹15",
+                sub: "Standard 🚶",
+                recommended: true,
+              },
+              { value: 25, label: "₹25", sub: "Fast ⚡" },
+              { value: 40, label: "₹40", sub: "Priority 🔥" },
+            ] as const
+          ).map((opt) => {
+            const selected = taskerFee === opt.value && taskerFeeCustom === "";
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  setTaskerFee(opt.value);
+                  setTaskerFeeCustom("");
+                }}
+                className="relative flex flex-col items-center justify-center gap-0.5 rounded-xl py-2.5 text-xs font-semibold transition-all active:scale-95"
+                style={{
+                  background: selected
+                    ? "rgba(0,230,118,0.18)"
+                    : "rgba(255,255,255,0.04)",
+                  border: selected
+                    ? "1.5px solid rgba(0,230,118,0.6)"
+                    : "1px solid rgba(255,255,255,0.1)",
+                  color: selected ? "#00E676" : "rgba(255,255,255,0.6)",
+                  boxShadow: selected
+                    ? "0 0 12px rgba(0,230,118,0.18)"
+                    : "none",
+                }}
+                data-ocid="posttask.toggle"
+              >
+                {"recommended" in opt && opt.recommended && (
+                  <span
+                    className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap"
+                    style={{ background: "#00E676", color: "#000" }}
+                  >
+                    Recommended
+                  </span>
+                )}
+                <span className="font-bold text-sm">{opt.label}</span>
+                <span className="text-[10px] opacity-70">{opt.sub}</span>
+              </button>
+            );
+          })}
+        </div>
+        {/* Custom input */}
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">
+            ₹
+          </span>
+          <input
+            type="number"
+            min={10}
+            placeholder="Custom amount (min ₹10)"
+            value={taskerFeeCustom}
+            onChange={(e) => {
+              const v = e.target.value;
+              setTaskerFeeCustom(v);
+              const n = Number(v);
+              if (!Number.isNaN(n) && n > 0) setTaskerFee(n);
+            }}
+            className="w-full rounded-xl pl-8 pr-4 py-2.5 text-sm text-white placeholder-white/25 outline-none transition-all"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+            data-ocid="posttask.input"
+          />
+        </div>
+        {/* Dynamic feedback */}
+        {taskerFee > 0 && (
+          <p
+            className="text-xs font-medium"
+            style={{
+              color:
+                taskerFee >= 25
+                  ? "#00E676"
+                  : taskerFee >= 15
+                    ? "rgba(0,230,118,0.7)"
+                    : "rgba(245,158,11,0.9)",
+            }}
+          >
+            {taskerFee < 10
+              ? "⚠️ Increase tasker fee to continue"
+              : taskerFee <= 10
+                ? "🐢 Fewer taskers may accept at this fee"
+                : taskerFee === 15
+                  ? "✅ Good chance of quick acceptance"
+                  : "⚡ High priority – faster acceptance expected ⚡"}
+          </p>
+        )}
+        {errors.taskerFee && (
+          <p
+            className="text-xs"
+            style={{ color: "#f87171" }}
+            data-ocid="posttask.error_state"
+          >
+            {errors.taskerFee}
+          </p>
+        )}
+      </div>
+
+      {/* Boost */}
       <div className="flex flex-col gap-2">
         <p
           className="text-xs font-medium uppercase tracking-wide"
           style={{ color: "rgba(255,255,255,0.5)" }}
         >
-          Tip your Tasker (optional)
+          Boost your task 🚀{" "}
+          <span
+            className="normal-case font-normal"
+            style={{ color: "rgba(255,255,255,0.3)" }}
+          >
+            (optional)
+          </span>
         </p>
-        <div className="flex gap-2 flex-wrap">
-          {TIP_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() =>
-                setFields((p) => ({
-                  ...p,
-                  tip: p.tip === opt.value ? null : opt.value,
-                }))
-              }
-              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-              style={{
-                background:
-                  fields.tip === opt.value
-                    ? `${GREEN}20`
-                    : "rgba(255,255,255,0.05)",
-                border: `1px solid ${
-                  fields.tip === opt.value
-                    ? `${GREEN}50`
-                    : "rgba(255,255,255,0.1)"
-                }`,
-                color:
-                  fields.tip === opt.value ? GREEN : "rgba(255,255,255,0.5)",
-              }}
-              data-ocid="posttask.toggle"
-            >
-              +{opt.label}
-            </button>
-          ))}
+        <div className="flex gap-2">
+          {([10, 20] as const).map((amt) => {
+            const selected = boost === amt;
+            return (
+              <button
+                key={amt}
+                type="button"
+                onClick={() => setBoost(boost === amt ? 0 : amt)}
+                className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-95"
+                style={{
+                  background: selected
+                    ? "rgba(0,230,118,0.18)"
+                    : "rgba(255,255,255,0.04)",
+                  border: selected
+                    ? "1.5px solid rgba(0,230,118,0.6)"
+                    : "1px solid rgba(255,255,255,0.1)",
+                  color: selected ? "#00E676" : "rgba(255,255,255,0.55)",
+                  boxShadow: selected
+                    ? "0 0 12px rgba(0,230,118,0.15)"
+                    : "none",
+                }}
+                data-ocid="posttask.toggle"
+              >
+                +₹{amt}
+              </button>
+            );
+          })}
         </div>
+        <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+          Boosted tasks get more visibility and faster responses
+        </p>
       </div>
 
       {/* Category */}
@@ -1227,25 +1358,23 @@ function PostTaskTab() {
       </div>
 
       {/* Price summary */}
-      {finalAmount > 0 && (
+      {totalPayable > 0 && (
         <div
-          className="flex items-center justify-between px-4 py-3 rounded-xl"
+          className="flex items-center justify-between px-4 py-3.5 rounded-xl"
           style={{
             background: "rgba(0,230,118,0.06)",
-            border: `1px solid ${GREEN}20`,
+            border: "1px solid rgba(0,230,118,0.2)",
           }}
         >
           <div className="flex flex-col gap-0.5">
+            <span className="text-lg font-bold" style={{ color: "#00E676" }}>
+              Total Payable: ₹{totalPayable}
+            </span>
             <span
               className="text-xs"
-              style={{ color: "rgba(255,255,255,0.45)" }}
+              style={{ color: "rgba(255,255,255,0.4)" }}
             >
-              Base ₹{baseAmount}
-              {surgePrice ? ` + 20% surge = ₹${surgePrice}` : ""}
-              {fields.tip ? ` + ₹${fields.tip} tip` : ""}
-            </span>
-            <span className="text-base font-bold" style={{ color: GREEN }}>
-              Total: ₹{finalAmount}
+              (includes all charges)
             </span>
           </div>
           {surgeActive && (
@@ -1270,7 +1399,7 @@ function PostTaskTab() {
 
       <button
         type="submit"
-        disabled={isLoading}
+        disabled={isLoading || !taskerFeeValid}
         className="py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
         style={{
           background:
@@ -1286,7 +1415,7 @@ function PostTaskTab() {
             Processing\u2026
           </span>
         ) : (
-          `Pay ₹${finalAmount || "—"} & Post Task`
+          `Pay ₹${totalPayable > 0 ? totalPayable : "—"} & Post Task`
         )}
       </button>
     </form>

@@ -1,39 +1,46 @@
-# Task Turtle — Real-Time Task Tracking System
+# Task Turtle — Payment + Pricing System Upgrade
 
 ## Current State
-- Task has 3 statuses: open, accepted, completed
-- Tasker stage is stored in localStorage (not DB)
-- No real-time sync between user and tasker
-- Tasker cannot see user's contact details after accepting
-- User cannot see tasker's details on live tracking
-- Live tracking on My Tasks is static (3 steps only)
+
+- `PostTaskTab` inside `Dashboard.tsx` has: Title, Description, Pickup/Delivery Location, Contact Number, Amount (₹), Category, and a "Tip your Tasker" section (±₹20/₹50/₹100 toggle buttons)
+- Final amount = base amount + optional tip
+- Razorpay charges `finalAmount * 100` paise
+- `platformFee.ts` has a flat 5% `getPlatformFee` and `getTaskerEarning` (95%)
+- Button shows `Pay ₹{finalAmount} & Post Task`
+- No platform fee structure — no tiered fee, no boost system
 
 ## Requested Changes (Diff)
 
 ### Add
-- `ExtendedStage` type in Motoko: posted | accepted | on_the_way | arrived | verified | delivered
-- `taskStages` stable map (taskId → ExtendedStage + updatedAt)
-- `advanceTaskStage(taskId, stage)` - tasker can advance to on_the_way / arrived
-- `getTaskStage(taskId)` - public query, anyone can poll
-- `getTaskParticipantProfiles(taskId)` - returns {userProfile, taskerProfile} if caller is poster or acceptor
-- Frontend: `useTaskStage` hook that polls backend every 3s for live updates
-- Dashboard MyTasksTab: 6-step live tracking timeline (matching homepage style: dark, neon green progress line, Done/In Progress tags) + tasker name/phone
-- TaskerPage ActiveTaskCard: replace localStorage stages with backend stages; show user name/phone/address/description; "Call User" (tel:) button
-- TaskerPage: control panel buttons (On the Way, Arrived, Verify OTP, Mark Delivered)
+- **Tasker Fee section** (replaces Tip): 4 preset buttons (₹10 Economy🐢, ₹15 Standard🚶 Recommended, ₹25 Fast⚡, ₹40 Priority🔥) + custom number input
+- **Dynamic feedback** per fee tier: ≤₹10 warning, ₹15 positive, ≥₹25 priority message
+- **Validation**: disable submit + show error if tasker_fee < ₹10
+- **Boost system** (+₹10 / +₹20 toggle, optional) below Tasker Fee section
+- **Tiered hidden platform fee** logic: ₹0–₹99 → ₹4, ₹100–₹299 → ₹7, ₹300–₹500 → ₹10
+- **Total Payable display** above button: "Total Payable: ₹XXX" + "(includes all charges)" — live real-time update
+- **New utility functions** in `platformFee.ts`: `calculatePlatformFee`, `calculateTotalPayable`, `validateTaskerFee`, `calculateCommission`, `calculateTaskerPayout`
 
 ### Modify
-- `acceptTask`: also set taskStage to `accepted`
-- `completeTask` (OTP verify): set taskStage to `delivered` after success
-- TaskerPage `ActiveTaskCard`: remove localStorage, use real backend stage via polling
-- Dashboard `MyTasksTab`: expand 3-step progress to 6-step live polling timeline
+- **Button text**: from `Pay ₹{finalAmount} & Post Task` → `Pay ₹{totalPayable} & Post Task` (dynamic, real-time)
+- **Razorpay amount**: now `totalPayable * 100` (includes platform fee + tasker fee + boost)
+- **WalletTab / WalletPage**: update earning formula from flat 95% to new payout formula: `tasker_payout = amount + (tasker_fee + boost - 0.15 * (tasker_fee + boost))` — since task.amount in DB is now the full total, use a best-effort approximation using stored amount
+- **`platformFee.ts`**: replace old 5% functions with new tiered functions
 
 ### Remove
-- `getStoredStage` / `setStoredStage` localStorage helpers in TaskerPage
+- "Tip your Tasker (optional)" section with ₹20/₹50/₹100 buttons
+- `type Tip = 20 | 50 | 100 | null` and related state/logic from PostTaskTab
+- Old flat 5% fee references
 
 ## Implementation Plan
-1. Update `src/backend/main.mo`: add ExtendedStage, taskStages map, advanceTaskStage, getTaskStage, getTaskParticipantProfiles, modify acceptTask/completeTask
-2. Update `src/frontend/src/backend.d.ts`: add new types and function signatures
-3. Update `src/frontend/src/backend.ts`: add new function wrappers
-4. Add `useTaskStage` polling hook (3s interval)
-5. Rebuild `TaskerPage.tsx`: active task shows user details + call button, stage control panel uses backend
-6. Rebuild `Dashboard.tsx` MyTasksTab: 6-step live tracking with polling, tasker name/phone
+
+1. Update `src/frontend/src/utils/platformFee.ts` with new exported functions
+2. In `Dashboard.tsx` `PostTaskTab`:
+   a. Remove Tip state, type, and UI block
+   b. Add `taskerFee` state (default 15) and `boost` state (default 0)
+   c. Add Tasker Fee section with 4 preset buttons + custom input + dynamic feedback
+   d. Add Boost section with +₹10 / +₹20 toggle buttons
+   e. Recalculate `totalPayable` in real-time using new utility
+   f. Update Total display and button
+   g. Add validation: tasker_fee < 10 disables button
+   h. Update Razorpay amount to `totalPayable`
+3. Update `WalletTab.tsx` and `WalletPage.tsx` to reference new payout formula

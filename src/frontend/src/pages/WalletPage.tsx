@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { type PublicTask, TaskStatus } from "../backend";
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
-import { getTaskerEarning } from "../utils/platformFee";
+import { calculatePlatformFee, getTaskerEarning } from "../utils/platformFee";
 
 const GREEN = "#00E676";
 
@@ -180,11 +180,12 @@ export function WalletPage() {
                 color: "rgba(255,255,255,0.5)",
               }}
             >
-              💡 Task Turtle keeps{" "}
-              <strong style={{ color: "rgba(255,255,255,0.75)" }}>5%</strong> as
-              platform fee. You receive the remaining{" "}
-              <strong style={{ color: GREEN }}>95%</strong> of the task amount +
-              tip directly in your wallet after OTP verification.
+              💡 Task Turtle charges a tiered platform fee (₹4–₹10) plus{" "}
+              <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                15% commission
+              </strong>{" "}
+              on tasker fee &amp; boost. Your payout includes the full product
+              amount + tasker fee &amp; boost after commission.
             </div>
 
             {/* Earnings History */}

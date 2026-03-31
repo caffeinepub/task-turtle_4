@@ -19,7 +19,11 @@ import {
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { calculateTotalPayable, getTaskerEarning } from "../utils/platformFee";
+import {
+  calculatePlatformFee,
+  calculateTotalPayable,
+  getTaskerEarning,
+} from "../utils/platformFee";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
 import { DEFAULT_TASK_IMAGE, getTaskImage } from "../utils/taskImage";
 
@@ -372,6 +376,35 @@ function TaskCard({
               {task.location}
             </span>
           </div>
+        )}
+      </div>
+
+      {/* Pricing breakdown */}
+      <div
+        className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t"
+        style={{ borderColor: "rgba(0,230,118,0.1)" }}
+      >
+        <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+          Amount:{" "}
+          <span className="font-semibold text-white">
+            ₹{Number(task.amount).toString()}
+          </span>
+        </span>
+        {Number(task.taskerFee) > 0 && (
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+            Tasker Fee:{" "}
+            <span className="font-semibold" style={{ color: "#00E676" }}>
+              ₹{Number(task.taskerFee)}
+            </span>
+          </span>
+        )}
+        {Number(task.boost) > 0 && (
+          <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+            Boost:{" "}
+            <span className="font-semibold" style={{ color: "#00E676" }}>
+              ₹{Number(task.boost)}
+            </span>
+          </span>
         )}
       </div>
 
@@ -1362,26 +1395,65 @@ function PostTaskTab() {
       {/* Price summary */}
       {totalPayable > 0 && (
         <div
-          className="flex items-center justify-between px-4 py-3.5 rounded-xl"
+          className="flex flex-col gap-2 px-4 py-3.5 rounded-xl"
           style={{
             background: "rgba(0,230,118,0.06)",
             border: "1px solid rgba(0,230,118,0.2)",
           }}
         >
-          <div className="flex flex-col gap-0.5">
-            <span className="text-lg font-bold" style={{ color: "#00E676" }}>
-              Total Payable: ₹{totalPayable}
-            </span>
+          <div className="flex items-center justify-between">
             <span
               className="text-xs"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              style={{ color: "rgba(255,255,255,0.55)" }}
             >
-              (includes all charges)
+              Amount (product)
             </span>
+            <span className="text-xs text-white">₹{effectiveBase}</span>
           </div>
-          {surgeActive && (
-            <Zap size={18} fill={AMBER} style={{ color: AMBER }} />
+          <div className="flex items-center justify-between">
+            <span
+              className="text-xs"
+              style={{ color: "rgba(255,255,255,0.55)" }}
+            >
+              Tasker Fee
+            </span>
+            <span className="text-xs text-white">₹{taskerFee}</span>
+          </div>
+          {boost > 0 && (
+            <div className="flex items-center justify-between">
+              <span
+                className="text-xs"
+                style={{ color: "rgba(255,255,255,0.55)" }}
+              >
+                Boost
+              </span>
+              <span className="text-xs text-white">₹{boost}</span>
+            </div>
           )}
+          <div
+            className="border-t pt-2"
+            style={{ borderColor: "rgba(0,230,118,0.2)" }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <span
+                  className="text-lg font-bold"
+                  style={{ color: "#00E676" }}
+                >
+                  Total Payable: ₹{totalPayable}
+                </span>
+                <span
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  (includes all charges)
+                </span>
+              </div>
+              {surgeActive && (
+                <Zap size={18} fill={AMBER} style={{ color: AMBER }} />
+              )}
+            </div>
+          </div>
         </div>
       )}
 

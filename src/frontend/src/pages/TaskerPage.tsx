@@ -122,8 +122,8 @@ function ActiveTaskCard({
   }
 
   const productAmount = Number(task.amount);
-  const taskerFee1 = Number(task.taskerFee);
-  const boost1 = Number(task.boost);
+  const taskerFee1 = Number(task.taskerFee ?? 0) || 0;
+  const boost1 = Number(task.boost ?? 0) || 0;
   const earning1 = taskerFee1 + boost1;
   const totalTaskerGets1 = productAmount + earning1;
 
@@ -508,8 +508,8 @@ function AvailableTaskCard({
 }) {
   const isAccepting = accepting === task.id;
   const productAmount = Number(task.amount);
-  const taskerFee = Number(task.taskerFee);
-  const boost = Number(task.boost);
+  const taskerFee = Number(task.taskerFee ?? 0) || 0;
+  const boost = Number(task.boost ?? 0) || 0;
   const earning = taskerFee + boost;
   const totalTaskerGets = productAmount + earning;
 

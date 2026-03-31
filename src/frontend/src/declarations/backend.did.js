@@ -26,6 +26,9 @@ export const PublicTask = IDL.Record({
   'amount' : IDL.Nat,
   'location' : IDL.Text,
   'poster' : IDL.Principal,
+  'taskerFee' : IDL.Nat,
+  'boost' : IDL.Nat,
+  'productAmount' : IDL.Nat,
 });
 export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
 export const UserRole = IDL.Variant({
@@ -112,7 +115,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'createTask' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat],
       [IDL.Opt(IDL.Text)],
       [],
     ),
@@ -181,6 +184,9 @@ export const idlFactory = ({ IDL }) => {
     'amount' : IDL.Nat,
     'location' : IDL.Text,
     'poster' : IDL.Principal,
+    'taskerFee' : IDL.Nat,
+    'boost' : IDL.Nat,
+    'productAmount' : IDL.Nat,
   });
   const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
   const UserRole = IDL.Variant({
@@ -264,7 +270,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'createTask' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat],
         [IDL.Opt(IDL.Text)],
         [],
       ),

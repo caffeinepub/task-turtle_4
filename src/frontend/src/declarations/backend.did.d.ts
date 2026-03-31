@@ -34,6 +34,9 @@ export interface PublicTask {
   'amount' : bigint,
   'location' : string,
   'poster' : Principal,
+  'taskerFee' : bigint,
+  'boost' : bigint,
+  'productAmount' : bigint,
 }
 export type Result = { 'ok' : null } |
   { 'err' : string };
@@ -98,7 +101,7 @@ export interface _SERVICE {
   'countTasks' : ActorMethod<[], bigint>,
   'createRazorpayOrder' : ActorMethod<[bigint, string, string, string], Result>,
   'createTask' : ActorMethod<
-    [string, string, string, string, bigint],
+    [string, string, string, string, bigint, bigint, bigint],
     [] | [string]
   >,
   'getAllTasks' : ActorMethod<[], Array<PublicTask>>,

@@ -381,31 +381,79 @@ function TaskCard({
 
       {/* Pricing breakdown */}
       <div
-        className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t"
+        className="flex flex-wrap items-center gap-x-1.5 gap-y-1 pt-2 border-t"
         style={{ borderColor: "rgba(0,230,118,0.1)" }}
       >
-        <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Amount:{" "}
-          <span className="font-semibold text-white">
-            ₹{Number(task.amount).toString()}
-          </span>
+        <span className="text-xs font-semibold text-white">
+          ₹{Number(task.amount)}
+        </span>
+        <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+          Amount
         </span>
         {Number(task.taskerFee) > 0 && (
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-            Tasker Fee:{" "}
-            <span className="font-semibold" style={{ color: "#00E676" }}>
+          <>
+            <span
+              className="text-xs font-bold"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              +
+            </span>
+            <span
+              className="text-xs font-semibold"
+              style={{ color: "#00E676" }}
+            >
               ₹{Number(task.taskerFee)}
             </span>
-          </span>
+            <span
+              className="text-xs"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              Tasker Fee
+            </span>
+          </>
         )}
         {Number(task.boost) > 0 && (
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-            Boost:{" "}
-            <span className="font-semibold" style={{ color: "#00E676" }}>
+          <>
+            <span
+              className="text-xs font-bold"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              +
+            </span>
+            <span
+              className="text-xs font-semibold"
+              style={{ color: "#00ff90" }}
+            >
               ₹{Number(task.boost)}
             </span>
-          </span>
+            <span
+              className="text-xs"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              Boost
+            </span>
+          </>
         )}
+        <span
+          className="text-xs font-bold"
+          style={{ color: "rgba(255,255,255,0.35)" }}
+        >
+          =
+        </span>
+        <span
+          className="text-xs font-bold px-2 py-0.5 rounded-full"
+          style={{
+            background: "rgba(0,230,118,0.12)",
+            color: "#00E676",
+            border: "1px solid rgba(0,230,118,0.25)",
+          }}
+        >
+          Total ₹
+          {Number(task.amount) + Number(task.taskerFee) + Number(task.boost)}
+        </span>
+        <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+          (incl. profit)
+        </span>
       </div>
 
       {/* Live 6-step tracking timeline or static progress */}
@@ -1620,40 +1668,92 @@ function FindTasksTab() {
                   )}
                 </div>
                 <div className="shrink-0">
-                  {Number(task.productAmount) > 0 ? (
-                    <div className="flex flex-col gap-0.5 text-right">
-                      <div
-                        className="text-xs"
-                        style={{ color: "rgba(255,255,255,0.45)" }}
-                      >
-                        Buy Item: ₹{Number(task.productAmount)}
-                      </div>
-                      <div
-                        className="text-xs font-semibold"
-                        style={{ color: GREEN }}
-                      >
-                        Tasker Fee: ₹{Number(task.taskerFee)}
-                        {Number(task.boost) > 0 && (
-                          <span className="ml-1" style={{ color: "#00ff90" }}>
-                            +₹{Number(task.boost)} boost
-                          </span>
+                  {Number(task.productAmount) > 0 ||
+                  Number(task.taskerFee) > 0 ? (
+                    <div className="flex flex-col gap-1 items-end">
+                      {/* Formula row */}
+                      <div className="flex flex-wrap items-center justify-end gap-x-1 gap-y-0.5">
+                        <span className="text-xs font-semibold text-white">
+                          ₹
+                          {Number(task.productAmount) > 0
+                            ? Number(task.productAmount)
+                            : Number(task.amount)}
+                        </span>
+                        <span
+                          className="text-xs"
+                          style={{ color: "rgba(255,255,255,0.35)" }}
+                        >
+                          Amt
+                        </span>
+                        {Number(task.taskerFee) > 0 && (
+                          <>
+                            <span
+                              className="text-xs"
+                              style={{ color: "rgba(255,255,255,0.35)" }}
+                            >
+                              +
+                            </span>
+                            <span
+                              className="text-xs font-semibold"
+                              style={{ color: GREEN }}
+                            >
+                              ₹{Number(task.taskerFee)}
+                            </span>
+                            <span
+                              className="text-xs"
+                              style={{ color: "rgba(255,255,255,0.35)" }}
+                            >
+                              Fee
+                            </span>
+                          </>
                         )}
+                        {Number(task.boost) > 0 && (
+                          <>
+                            <span
+                              className="text-xs"
+                              style={{ color: "rgba(255,255,255,0.35)" }}
+                            >
+                              +
+                            </span>
+                            <span
+                              className="text-xs font-semibold"
+                              style={{ color: "#00ff90" }}
+                            >
+                              ₹{Number(task.boost)}
+                            </span>
+                            <span
+                              className="text-xs"
+                              style={{ color: "rgba(255,255,255,0.35)" }}
+                            >
+                              Boost
+                            </span>
+                          </>
+                        )}
+                        <span
+                          className="text-xs"
+                          style={{ color: "rgba(255,255,255,0.35)" }}
+                        >
+                          =
+                        </span>
+                        <span
+                          className="text-xs font-bold px-2 py-0.5 rounded-full"
+                          style={{
+                            background: "rgba(0,230,118,0.14)",
+                            color: GREEN,
+                            border: "1px solid rgba(0,230,118,0.28)",
+                          }}
+                        >
+                          ₹
+                          {(Number(task.productAmount) > 0
+                            ? Number(task.productAmount)
+                            : Number(task.amount)) +
+                            Number(task.taskerFee) +
+                            Number(task.boost)}
+                        </span>
                       </div>
+                      {/* Profit line */}
                       <div
-                        className="text-sm font-bold mt-0.5 px-2 py-0.5 rounded-lg"
-                        style={{
-                          background: "rgba(0,230,118,0.12)",
-                          color: GREEN,
-                          border: "1px solid rgba(0,230,118,0.25)",
-                        }}
-                      >
-                        Total You Get: ₹
-                        {Number(task.productAmount) +
-                          Number(task.taskerFee) +
-                          Number(task.boost)}
-                      </div>
-                      <div
-                        className="text-xs font-semibold"
+                        className="text-xs font-bold"
                         style={{ color: "#00ff90" }}
                       >
                         Your Profit: ₹

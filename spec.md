@@ -1,46 +1,34 @@
-# Task Turtle — Payment + Pricing System Upgrade
+# Task Turtle
 
 ## Current State
+Pricing system uses: tiered platform_fee (₹4/₹7/₹10) paid by user, 15% commission on tasker_fee+boost deducted from tasker payout.
 
-- `PostTaskTab` inside `Dashboard.tsx` has: Title, Description, Pickup/Delivery Location, Contact Number, Amount (₹), Category, and a "Tip your Tasker" section (±₹20/₹50/₹100 toggle buttons)
-- Final amount = base amount + optional tip
-- Razorpay charges `finalAmount * 100` paise
-- `platformFee.ts` has a flat 5% `getPlatformFee` and `getTaskerEarning` (95%)
-- Button shows `Pay ₹{finalAmount} & Post Task`
-- No platform fee structure — no tiered fee, no boost system
+Tasker view (AvailableTaskCard): shows Buy Item + Earn (tasker_fee+boost) + Total You Get (task_amount + earnings). No platformCut deduction shown.
+
+Tasker active view (ActiveTaskCard): shows Buy Item (reimbursed) + Your Earning + Total You Get — but earnings shown are GROSS (not net after 15% cut).
+
+Post Task breakdown: shows Amount (product) + Tasker Fee + Boost + Total Payable (missing explicit Platform Fee line).
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Tasker Fee section** (replaces Tip): 4 preset buttons (₹10 Economy🐢, ₹15 Standard🚶 Recommended, ₹25 Fast⚡, ₹40 Priority🔥) + custom number input
-- **Dynamic feedback** per fee tier: ≤₹10 warning, ₹15 positive, ≥₹25 priority message
-- **Validation**: disable submit + show error if tasker_fee < ₹10
-- **Boost system** (+₹10 / +₹20 toggle, optional) below Tasker Fee section
-- **Tiered hidden platform fee** logic: ₹0–₹99 → ₹4, ₹100–₹299 → ₹7, ₹300–₹500 → ₹10
-- **Total Payable display** above button: "Total Payable: ₹XXX" + "(includes all charges)" — live real-time update
-- **New utility functions** in `platformFee.ts`: `calculatePlatformFee`, `calculateTotalPayable`, `validateTaskerFee`, `calculateCommission`, `calculateTaskerPayout`
+- New calculation helpers in `platformFee.ts`: `calculateGrossEarning`, `calculatePlatformCut`, `calculateNetEarning`, `calculateTotalReturned`
+- Platform Fee line in Post Task price summary (user side)
+- `platformCut` deduction clearly shown in ActiveTaskCard (My Active Tasks)
 
 ### Modify
-- **Button text**: from `Pay ₹{finalAmount} & Post Task` → `Pay ₹{totalPayable} & Post Task` (dynamic, real-time)
-- **Razorpay amount**: now `totalPayable * 100` (includes platform fee + tasker fee + boost)
-- **WalletTab / WalletPage**: update earning formula from flat 95% to new payout formula: `tasker_payout = amount + (tasker_fee + boost - 0.15 * (tasker_fee + boost))` — since task.amount in DB is now the full total, use a best-effort approximation using stored amount
-- **`platformFee.ts`**: replace old 5% functions with new tiered functions
+- `platformFee.ts`: add precise new helpers using spec formula
+- `PostTaskTab` in `Dashboard.tsx`: price summary box must show all 5 lines: Task Amount / Tasker Fee / Boost Fee (if any) / Platform Fee / Total Payable
+- `AvailableTaskCard` in `TaskerPage.tsx`: replace earnings block with simple two-line view: `Task Value (You spend): ₹X` + `You earn: ₹{netEarning}` (green, bold, PRIMARY) + small `"after platform fee"` note. NO total_paid, NO platform_fee visible
+- `ActiveTaskCard` in `TaskerPage.tsx`: replace earnings block with full 5-line breakdown: Task Value / Gross Earning / Platform Fee 15% / You earn Final / Total Amount Returned
 
 ### Remove
-- "Tip your Tasker (optional)" section with ₹20/₹50/₹100 buttons
-- `type Tip = 20 | 50 | 100 | null` and related state/logic from PostTaskTab
-- Old flat 5% fee references
+- Old earnings display logic in AvailableTaskCard (taskerFee + boost raw, Total You Get without deduction)
+- Old earnings display logic in ActiveTaskCard (gross earnings shown as net)
 
 ## Implementation Plan
-
-1. Update `src/frontend/src/utils/platformFee.ts` with new exported functions
-2. In `Dashboard.tsx` `PostTaskTab`:
-   a. Remove Tip state, type, and UI block
-   b. Add `taskerFee` state (default 15) and `boost` state (default 0)
-   c. Add Tasker Fee section with 4 preset buttons + custom input + dynamic feedback
-   d. Add Boost section with +₹10 / +₹20 toggle buttons
-   e. Recalculate `totalPayable` in real-time using new utility
-   f. Update Total display and button
-   g. Add validation: tasker_fee < 10 disables button
-   h. Update Razorpay amount to `totalPayable`
-3. Update `WalletTab.tsx` and `WalletPage.tsx` to reference new payout formula
+1. Update `src/frontend/src/utils/platformFee.ts` — add new helpers
+2. Update `PostTaskTab` in `Dashboard.tsx` — 5-line price summary
+3. Update `AvailableTaskCard` in `TaskerPage.tsx` — simple 2-line tasker view
+4. Update `ActiveTaskCard` in `TaskerPage.tsx` — full 5-line breakdown
+5. Validate and build

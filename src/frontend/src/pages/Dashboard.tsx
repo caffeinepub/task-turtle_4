@@ -1449,15 +1449,17 @@ function PostTaskTab() {
             border: "1px solid rgba(0,230,118,0.2)",
           }}
         >
+          {/* Task Amount */}
           <div className="flex items-center justify-between">
             <span
               className="text-xs"
               style={{ color: "rgba(255,255,255,0.55)" }}
             >
-              Amount (product)
+              Task Amount
             </span>
             <span className="text-xs text-white">₹{effectiveBase}</span>
           </div>
+          {/* Tasker Fee */}
           <div className="flex items-center justify-between">
             <span
               className="text-xs"
@@ -1467,17 +1469,31 @@ function PostTaskTab() {
             </span>
             <span className="text-xs text-white">₹{taskerFee}</span>
           </div>
+          {/* Boost Fee — only if boost > 0 */}
           {boost > 0 && (
             <div className="flex items-center justify-between">
               <span
                 className="text-xs"
                 style={{ color: "rgba(255,255,255,0.55)" }}
               >
-                Boost
+                Boost Fee
               </span>
               <span className="text-xs text-white">₹{boost}</span>
             </div>
           )}
+          {/* Platform Fee */}
+          <div className="flex items-center justify-between">
+            <span
+              className="text-xs"
+              style={{ color: "rgba(255,255,255,0.55)" }}
+            >
+              Platform Fee
+            </span>
+            <span className="text-xs text-white">
+              ₹{effectiveBase > 0 ? calculatePlatformFee(effectiveBase) : 0}
+            </span>
+          </div>
+          {/* Divider + Total */}
           <div
             className="border-t pt-2"
             style={{ borderColor: "rgba(0,230,118,0.2)" }}

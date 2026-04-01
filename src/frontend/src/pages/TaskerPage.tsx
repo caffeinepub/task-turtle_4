@@ -17,6 +17,7 @@ import { type PublicTask, TaskStatus, type UserProfile } from "../backend";
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { calculateNetEarning } from "../utils/platformFee";
 
 const GREEN = "#00E676";
 
@@ -120,12 +121,6 @@ function ActiveTaskCard({
       setVerifying(false);
     }
   }
-
-  const productAmount = Number(task.amount);
-  const taskerFee1 = Number(task.taskerFee ?? 0) || 0;
-  const boost1 = Number(task.boost ?? 0) || 0;
-  const earning1 = taskerFee1 + boost1;
-  const totalTaskerGets1 = productAmount + earning1;
 
   return (
     <div
@@ -282,41 +277,89 @@ function ActiveTaskCard({
             border: `1px solid ${GREEN}25`,
           }}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className="flex items-center gap-1.5 text-xs"
-              style={{ color: "rgba(255,255,255,0.55)" }}
-            >
-              <ShoppingBag size={11} /> Buy Item (reimbursed)
-            </span>
-            <span className="text-xs font-semibold text-white">
-              ₹{productAmount}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className="flex items-center gap-1.5 text-xs"
-              style={{ color: "rgba(255,255,255,0.55)" }}
-            >
-              <TrendingUp size={11} /> Your Earning
-            </span>
-            <span className="text-xs font-semibold" style={{ color: GREEN }}>
-              {boost1 > 0
-                ? `₹${earning1} (₹${taskerFee1} fee + ₹${boost1} boost)`
-                : `₹${taskerFee1}`}
-            </span>
-          </div>
-          <div
-            className="flex items-center justify-between gap-2 pt-2 border-t"
-            style={{ borderColor: `${GREEN}25` }}
-          >
-            <span className="text-xs font-bold" style={{ color: GREEN }}>
-              Total You Get
-            </span>
-            <span className="text-base font-bold" style={{ color: GREEN }}>
-              ₹{totalTaskerGets1}
-            </span>
-          </div>
+          {(() => {
+            const taskAmount = Number(task.amount);
+            const tFee = Number(task.taskerFee ?? 0) || 0;
+            const bFee = Number(task.boost ?? 0) || 0;
+            const grossEarning = tFee + bFee;
+            const platformCut = +(grossEarning * 0.15).toFixed(2);
+            const netEarning = +(grossEarning - platformCut).toFixed(2);
+            const totalReturned = +(taskAmount + netEarning).toFixed(2);
+            return (
+              <>
+                <p
+                  className="text-xs font-bold uppercase tracking-widest mb-2"
+                  style={{ color: GREEN }}
+                >
+                  Earnings Breakdown
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    Task Value (You spend)
+                  </span>
+                  <span className="text-xs font-semibold text-white">
+                    ₹{taskAmount}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    Gross Earning
+                  </span>
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: "rgba(0,230,118,0.8)" }}
+                  >
+                    ₹{grossEarning}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-xs"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    Platform Fee (15% on earnings)
+                  </span>
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: "#f87171" }}
+                  >
+                    -₹{platformCut}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: GREEN }}
+                  >
+                    You earn (Final)
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: GREEN }}>
+                    ₹{netEarning}
+                  </span>
+                </div>
+                <div
+                  className="flex items-center justify-between gap-2 pt-2 mt-1 border-t"
+                  style={{ borderColor: `${GREEN}25` }}
+                >
+                  <span className="text-xs font-bold" style={{ color: GREEN }}>
+                    Total Amount Returned
+                  </span>
+                  <span
+                    className="text-base font-black"
+                    style={{ color: GREEN }}
+                  >
+                    ₹{totalReturned}
+                  </span>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -510,8 +553,6 @@ function AvailableTaskCard({
   const productAmount = Number(task.amount);
   const taskerFee = Number(task.taskerFee ?? 0) || 0;
   const boost = Number(task.boost ?? 0) || 0;
-  const earning = taskerFee + boost;
-  const totalTaskerGets = productAmount + earning;
 
   return (
     <div
@@ -543,40 +584,34 @@ function AvailableTaskCard({
           border: `1px solid ${GREEN}20`,
         }}
       >
+        {/* Primary: You earn (net after 15% cut) */}
         <div className="flex items-center justify-between gap-2">
           <span
-            className="flex items-center gap-1.5 text-xs"
+            className="text-xs font-medium"
             style={{ color: "rgba(255,255,255,0.5)" }}
           >
-            <ShoppingBag size={10} /> Buy Item
+            Task Value (You spend)
           </span>
-          <span className="text-xs font-semibold text-white">
-            ₹{productAmount}
-          </span>
+          <span className="text-sm font-bold text-white">₹{productAmount}</span>
         </div>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 mt-1">
           <span
-            className="flex items-center gap-1.5 text-xs"
+            className="text-xs font-medium"
             style={{ color: "rgba(255,255,255,0.5)" }}
           >
-            <TrendingUp size={10} /> Earn
+            You earn
           </span>
-          <span className="text-xs font-semibold" style={{ color: GREEN }}>
-            {boost > 0
-              ? `₹${earning} (₹${taskerFee} fee + ₹${boost} boost)`
-              : `₹${taskerFee}`}
-          </span>
-        </div>
-        <div
-          className="flex items-center justify-between gap-2 pt-1.5 mt-0.5 border-t"
-          style={{ borderColor: `${GREEN}20` }}
-        >
-          <span className="text-xs font-bold" style={{ color: GREEN }}>
-            Total You Get
-          </span>
-          <span className="text-sm font-bold" style={{ color: GREEN }}>
-            ₹{totalTaskerGets}
-          </span>
+          <div className="flex flex-col items-end">
+            <span className="text-xl font-black" style={{ color: GREEN }}>
+              ₹{calculateNetEarning(taskerFee, boost)}
+            </span>
+            <span
+              className="text-[10px]"
+              style={{ color: "rgba(255,255,255,0.3)" }}
+            >
+              after platform fee
+            </span>
+          </div>
         </div>
       </div>
 

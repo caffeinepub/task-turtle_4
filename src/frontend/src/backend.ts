@@ -728,6 +728,9 @@ function from_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint
     amount: bigint;
     location: string;
     poster: Principal;
+    taskerFee: bigint;
+    boost: bigint;
+    productAmount: bigint;
 }): {
     id: string;
     status: TaskStatus;
@@ -741,6 +744,9 @@ function from_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint
     amount: bigint;
     location: string;
     poster: Principal;
+    taskerFee: bigint;
+    boost: bigint;
+    productAmount: bigint;
 } {
     return {
         id: value.id,
@@ -754,7 +760,10 @@ function from_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint
         acceptedAt: record_opt_to_undefined(from_candid_opt_n6(_uploadFile, _downloadFile, value.acceptedAt)),
         amount: value.amount,
         location: value.location,
-        poster: value.poster
+        poster: value.poster,
+        taskerFee: value.taskerFee ?? 0n,
+        boost: value.boost ?? 0n,
+        productAmount: value.productAmount ?? 0n
     };
 }
 function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

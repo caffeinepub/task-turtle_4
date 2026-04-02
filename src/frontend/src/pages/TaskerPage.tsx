@@ -279,8 +279,34 @@ function ActiveTaskCard({
         >
           {(() => {
             const taskAmount = Number(task.amount);
-            const tFee = Number(task.taskerFee ?? 0) || 0;
-            const bFee = Number(task.boost ?? 0) || 0;
+            console.log("TASK API DATA (Active Task):", {
+              id: task.id,
+              title: task.title,
+              taskerFee: task.taskerFee,
+              boost: task.boost,
+              amount: task.amount,
+              productAmount: task.productAmount,
+            });
+            if (task.taskerFee === undefined || task.taskerFee === null) {
+              console.warn(
+                "WARNING: taskerFee missing in API response for task",
+                task.id,
+              );
+            }
+            if (task.boost === undefined || task.boost === null) {
+              console.warn(
+                "WARNING: boost missing in API response for task",
+                task.id,
+              );
+            }
+            const tFee =
+              task.taskerFee !== undefined && task.taskerFee !== null
+                ? Number(task.taskerFee)
+                : 0;
+            const bFee =
+              task.boost !== undefined && task.boost !== null
+                ? Number(task.boost)
+                : 0;
             const grossEarning = tFee + bFee;
             const platformCut = +(grossEarning * 0.15).toFixed(2);
             const netEarning = +(grossEarning - platformCut).toFixed(2);
@@ -551,8 +577,29 @@ function AvailableTaskCard({
 }) {
   const isAccepting = accepting === task.id;
   const productAmount = Number(task.amount);
-  const taskerFee = Number(task.taskerFee ?? 0) || 0;
-  const boost = Number(task.boost ?? 0) || 0;
+  console.log("TASK API DATA (Find Tasks):", {
+    id: task.id,
+    title: task.title,
+    taskerFee: task.taskerFee,
+    boost: task.boost,
+    amount: task.amount,
+    productAmount: task.productAmount,
+  });
+  if (task.taskerFee === undefined || task.taskerFee === null) {
+    console.warn(
+      "WARNING: taskerFee missing in API response for task",
+      task.id,
+    );
+  }
+  if (task.boost === undefined || task.boost === null) {
+    console.warn("WARNING: boost missing in API response for task", task.id);
+  }
+  const taskerFee =
+    task.taskerFee !== undefined && task.taskerFee !== null
+      ? Number(task.taskerFee)
+      : 0;
+  const boost =
+    task.boost !== undefined && task.boost !== null ? Number(task.boost) : 0;
 
   return (
     <div

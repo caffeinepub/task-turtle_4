@@ -1684,6 +1684,16 @@ function FindTasksTab() {
                   )}
                 </div>
                 <div className="shrink-0">
+                  {(() => {
+                    console.log("TASK API DATA (My Tasks):", {
+                      id: task.id,
+                      taskerFee: task.taskerFee,
+                      boost: task.boost,
+                      amount: task.amount,
+                      productAmount: task.productAmount,
+                    });
+                    return null;
+                  })()}
                   {Number(task.productAmount) > 0 ||
                   Number(task.taskerFee) > 0 ? (
                     <div className="flex flex-col gap-1 items-end">

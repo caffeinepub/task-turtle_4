@@ -4,9 +4,7 @@ import {
   Loader2,
   MapPin,
   Phone,
-  ShoppingBag,
   Tag,
-  TrendingUp,
   User,
   Wallet,
   Zap,
@@ -17,7 +15,6 @@ import { type PublicTask, TaskStatus, type UserProfile } from "../backend";
 import { AppNavbar } from "../components/AppNavbar";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { calculateNetEarning } from "../utils/platformFee";
 
 const GREEN = "#00E676";
 
@@ -31,7 +28,6 @@ const STAGE_LABELS: Record<WorkStage, string> = {
   5: "Verified ✓",
 };
 
-/** Map backend stage string to numeric WorkStage */
 function backendStageToWork(stage: string | null): WorkStage {
   if (!stage) return 1;
   switch (stage) {
@@ -45,6 +41,14 @@ function backendStageToWork(stage: string | null): WorkStage {
     default:
       return 1;
   }
+}
+
+/** Compute net earning after 15% platform cut on (taskerFee + boost) */
+function computeEarning(taskerFee: number, boost: number) {
+  const grossEarning = taskerFee + (boost || 0);
+  const platformCut = +(grossEarning * 0.15).toFixed(2);
+  const netEarning = +(grossEarning - platformCut).toFixed(2);
+  return { grossEarning, platformCut, netEarning };
 }
 
 function ActiveTaskCard({
@@ -64,7 +68,6 @@ function ActiveTaskCard({
 
   useEffect(() => {
     if (!actor) return;
-
     const fetchStage = async () => {
       if (otpModeRef.current) return;
       try {
@@ -72,7 +75,6 @@ function ActiveTaskCard({
         if (res) setStage(backendStageToWork(res.stage));
       } catch (_) {}
     };
-
     const fetchProfile = async () => {
       try {
         const profiles = await actor.getTaskParticipantProfiles(task.id);
@@ -82,7 +84,6 @@ function ActiveTaskCard({
         setProfileLoading(false);
       }
     };
-
     Promise.all([fetchStage(), fetchProfile()]);
     intervalRef.current = setInterval(fetchStage, 3000);
     return () => {
@@ -122,6 +123,27 @@ function ActiveTaskCard({
     }
   }
 
+  // Earnings calculation
+  const tFee = Number(task.taskerFee ?? 0);
+  const bFee = Number(task.boost ?? 0);
+  const isLegacy = tFee === 0 && bFee === 0;
+  const taskValue =
+    Number(task.productAmount) > 0
+      ? Number(task.productAmount)
+      : Number(task.amount);
+  const { grossEarning, platformCut, netEarning } = computeEarning(tFee, bFee);
+  const totalReturned = +(taskValue + netEarning).toFixed(2);
+
+  console.log("TASK API DATA (Active Task):", {
+    id: task.id,
+    title: task.title,
+    taskerFee: task.taskerFee,
+    boost: task.boost,
+    amount: task.amount,
+    productAmount: task.productAmount,
+    isLegacy,
+  });
+
   return (
     <div
       className="rounded-xl p-4 sm:p-5 flex flex-col gap-4"
@@ -130,7 +152,7 @@ function ActiveTaskCard({
         border: `1px solid ${GREEN}25`,
       }}
     >
-      {/* Customer Details Card */}
+      {/* Customer Details */}
       <div
         className="rounded-xl p-4 flex flex-col gap-3"
         style={{
@@ -153,7 +175,6 @@ function ActiveTaskCard({
             Customer Details
           </p>
         </div>
-
         {profileLoading ? (
           <div className="flex items-center gap-2 py-1">
             <Loader2
@@ -233,7 +254,7 @@ function ActiveTaskCard({
         )}
       </div>
 
-      {/* Task info + Earnings */}
+      {/* Task info */}
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -269,7 +290,7 @@ function ActiveTaskCard({
           </div>
         </div>
 
-        {/* Earnings breakdown — never shows platform fee */}
+        {/* Earnings breakdown — never shows platform fee, handles legacy tasks */}
         <div
           className="rounded-xl p-3 flex flex-col gap-2"
           style={{
@@ -277,115 +298,108 @@ function ActiveTaskCard({
             border: `1px solid ${GREEN}25`,
           }}
         >
-          {(() => {
-            const taskAmount = Number(task.amount);
-            console.log("TASK API DATA (Active Task):", {
-              id: task.id,
-              title: task.title,
-              taskerFee: task.taskerFee,
-              boost: task.boost,
-              amount: task.amount,
-              productAmount: task.productAmount,
-            });
-            if (task.taskerFee === undefined || task.taskerFee === null) {
-              console.warn(
-                "WARNING: taskerFee missing in API response for task",
-                task.id,
-              );
-            }
-            if (task.boost === undefined || task.boost === null) {
-              console.warn(
-                "WARNING: boost missing in API response for task",
-                task.id,
-              );
-            }
-            const tFee =
-              task.taskerFee !== undefined && task.taskerFee !== null
-                ? Number(task.taskerFee)
-                : 0;
-            const bFee =
-              task.boost !== undefined && task.boost !== null
-                ? Number(task.boost)
-                : 0;
-            const grossEarning = tFee + bFee;
-            const platformCut = +(grossEarning * 0.15).toFixed(2);
-            const netEarning = +(grossEarning - platformCut).toFixed(2);
-            const totalReturned = +(taskAmount + netEarning).toFixed(2);
-            return (
-              <>
-                <p
-                  className="text-xs font-bold uppercase tracking-widest mb-2"
+          <p
+            className="text-xs font-bold uppercase tracking-widest mb-2"
+            style={{ color: GREEN }}
+          >
+            Earnings Breakdown
+          </p>
+
+          {isLegacy ? (
+            // Legacy task: only show task value, no fake earnings
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  Task Value
+                </span>
+                <span className="text-sm font-bold text-white">
+                  ₹{Number(task.amount)}
+                </span>
+              </div>
+              <div
+                className="flex items-center gap-2 mt-1 px-3 py-2 rounded-lg"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <span
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  ⚠ Legacy task — detailed earnings info unavailable
+                </span>
+              </div>
+            </>
+          ) : (
+            // New task: full breakdown
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  Task Value (You spend)
+                </span>
+                <span className="text-xs font-semibold text-white">
+                  ₹{taskValue}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  Gross Earning
+                </span>
+                <span
+                  className="text-xs font-semibold"
+                  style={{ color: "rgba(0,230,118,0.8)" }}
+                >
+                  ₹{grossEarning}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className="text-xs"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  Platform Fee (15% on earnings)
+                </span>
+                <span
+                  className="text-xs font-semibold"
+                  style={{ color: "#f87171" }}
+                >
+                  -₹{platformCut}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className="text-xs font-semibold"
                   style={{ color: GREEN }}
                 >
-                  Earnings Breakdown
-                </p>
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="text-xs"
-                    style={{ color: "rgba(255,255,255,0.5)" }}
-                  >
-                    Task Value (You spend)
-                  </span>
-                  <span className="text-xs font-semibold text-white">
-                    ₹{taskAmount}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="text-xs"
-                    style={{ color: "rgba(255,255,255,0.5)" }}
-                  >
-                    Gross Earning
-                  </span>
-                  <span
-                    className="text-xs font-semibold"
-                    style={{ color: "rgba(0,230,118,0.8)" }}
-                  >
-                    ₹{grossEarning}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="text-xs"
-                    style={{ color: "rgba(255,255,255,0.5)" }}
-                  >
-                    Platform Fee (15% on earnings)
-                  </span>
-                  <span
-                    className="text-xs font-semibold"
-                    style={{ color: "#f87171" }}
-                  >
-                    -₹{platformCut}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="text-xs font-semibold"
-                    style={{ color: GREEN }}
-                  >
-                    You earn (Final)
-                  </span>
-                  <span className="text-sm font-bold" style={{ color: GREEN }}>
-                    ₹{netEarning}
-                  </span>
-                </div>
-                <div
-                  className="flex items-center justify-between gap-2 pt-2 mt-1 border-t"
-                  style={{ borderColor: `${GREEN}25` }}
-                >
-                  <span className="text-xs font-bold" style={{ color: GREEN }}>
-                    Total Amount Returned
-                  </span>
-                  <span
-                    className="text-base font-black"
-                    style={{ color: GREEN }}
-                  >
-                    ₹{totalReturned}
-                  </span>
-                </div>
-              </>
-            );
-          })()}
+                  You earn (Final)
+                </span>
+                <span className="text-sm font-bold" style={{ color: GREEN }}>
+                  ₹{netEarning}
+                </span>
+              </div>
+              <div
+                className="flex items-center justify-between gap-2 pt-2 mt-1 border-t"
+                style={{ borderColor: `${GREEN}25` }}
+              >
+                <span className="text-xs font-bold" style={{ color: GREEN }}>
+                  Total Amount Returned
+                </span>
+                <span className="text-base font-black" style={{ color: GREEN }}>
+                  ₹{totalReturned}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -423,7 +437,7 @@ function ActiveTaskCard({
         {STAGE_LABELS[stage]}
       </div>
 
-      {/* Action */}
+      {/* Action buttons */}
       <AnimatePresence mode="wait">
         {stage === 1 && (
           <motion.button
@@ -576,7 +590,16 @@ function AvailableTaskCard({
   accepting: string | null;
 }) {
   const isAccepting = accepting === task.id;
-  const productAmount = Number(task.amount);
+
+  const tFee = Number(task.taskerFee ?? 0);
+  const bFee = Number(task.boost ?? 0);
+  const isLegacy = tFee === 0 && bFee === 0;
+  const taskValue =
+    Number(task.productAmount) > 0
+      ? Number(task.productAmount)
+      : Number(task.amount);
+  const { netEarning } = computeEarning(tFee, bFee);
+
   console.log("TASK API DATA (Find Tasks):", {
     id: task.id,
     title: task.title,
@@ -584,22 +607,8 @@ function AvailableTaskCard({
     boost: task.boost,
     amount: task.amount,
     productAmount: task.productAmount,
+    isLegacy,
   });
-  if (task.taskerFee === undefined || task.taskerFee === null) {
-    console.warn(
-      "WARNING: taskerFee missing in API response for task",
-      task.id,
-    );
-  }
-  if (task.boost === undefined || task.boost === null) {
-    console.warn("WARNING: boost missing in API response for task", task.id);
-  }
-  const taskerFee =
-    task.taskerFee !== undefined && task.taskerFee !== null
-      ? Number(task.taskerFee)
-      : 0;
-  const boost =
-    task.boost !== undefined && task.boost !== null ? Number(task.boost) : 0;
 
   return (
     <div
@@ -623,7 +632,7 @@ function AvailableTaskCard({
         </div>
       </div>
 
-      {/* Earnings breakdown — shows Buy Item + Earn clearly, NEVER platform fee */}
+      {/* Earnings — legacy vs new */}
       <div
         className="rounded-xl p-3 flex flex-col gap-1.5"
         style={{
@@ -631,7 +640,6 @@ function AvailableTaskCard({
           border: `1px solid ${GREEN}20`,
         }}
       >
-        {/* Primary: You earn (net after 15% cut) */}
         <div className="flex items-center justify-between gap-2">
           <span
             className="text-xs font-medium"
@@ -639,27 +647,41 @@ function AvailableTaskCard({
           >
             Task Value (You spend)
           </span>
-          <span className="text-sm font-bold text-white">₹{productAmount}</span>
+          <span className="text-sm font-bold text-white">₹{taskValue}</span>
         </div>
-        <div className="flex items-center justify-between gap-2 mt-1">
-          <span
-            className="text-xs font-medium"
-            style={{ color: "rgba(255,255,255,0.5)" }}
-          >
-            You earn
-          </span>
-          <div className="flex flex-col items-end">
-            <span className="text-xl font-black" style={{ color: GREEN }}>
-              ₹{calculateNetEarning(taskerFee, boost)}
-            </span>
+
+        {isLegacy ? (
+          // Legacy task: don't show fake ₹0 earnings
+          <div className="flex items-center gap-2 mt-1">
             <span
-              className="text-[10px]"
-              style={{ color: "rgba(255,255,255,0.3)" }}
+              className="text-xs"
+              style={{ color: "rgba(255,255,255,0.35)" }}
             >
-              after platform fee
+              ⚠ Legacy task — earnings info unavailable
             </span>
           </div>
-        </div>
+        ) : (
+          // New task: show net earning prominently
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <span
+              className="text-xs font-medium"
+              style={{ color: "rgba(255,255,255,0.5)" }}
+            >
+              You earn
+            </span>
+            <div className="flex flex-col items-end">
+              <span className="text-xl font-black" style={{ color: GREEN }}>
+                ₹{netEarning}
+              </span>
+              <span
+                className="text-[10px]"
+                style={{ color: "rgba(255,255,255,0.3)" }}
+              >
+                after platform fee
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -723,6 +745,15 @@ export function TaskerPage() {
 
   const myPrincipal = identity?.getPrincipal().toString();
 
+  // Clear any cached task display state on mount
+  useEffect(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("task_") || key.startsWith("tasker_cache")) {
+        localStorage.removeItem(key);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!actor || isFetching) return;
     Promise.all([actor.getAllTasks(), actor.getMyAcceptedTasks()])
@@ -773,7 +804,6 @@ export function TaskerPage() {
   const completedTasks = myTasks.filter(
     (t) => t.status === TaskStatus.completed,
   );
-  // For completed tasks, show product amount (the only thing we know for sure)
   const totalProductAmount = completedTasks.reduce(
     (sum, t) => sum + Number(t.amount),
     0,
@@ -787,7 +817,6 @@ export function TaskerPage() {
       <AppNavbar currentPage="tasker" />
 
       <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-white">
             Tasker <span style={{ color: GREEN }}>Dashboard</span>
@@ -813,9 +842,8 @@ export function TaskerPage() {
           </div>
         ) : (
           <>
-            {/* Top stats row — Online toggle + Earnings */}
+            {/* Top stats */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-              {/* Online toggle */}
               <div
                 className="rounded-xl p-3 sm:p-4 flex items-center justify-between gap-2"
                 style={{
@@ -869,7 +897,6 @@ export function TaskerPage() {
                 </button>
               </div>
 
-              {/* Earnings wallet */}
               <div
                 className="rounded-xl p-3 sm:p-4"
                 style={{
@@ -902,7 +929,7 @@ export function TaskerPage() {
               </div>
             </div>
 
-            {/* TAB SWITCHER — sticky on mobile */}
+            {/* TAB SWITCHER */}
             <div className="sticky z-40 mb-5" style={{ top: "57px" }}>
               <div
                 className="flex gap-2 p-1 rounded-2xl"
@@ -912,78 +939,49 @@ export function TaskerPage() {
                 }}
                 data-ocid="taskerpage.tabs.panel"
               >
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("available")}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 sm:px-5 rounded-xl text-sm font-bold transition-all min-h-[44px]"
-                  style={{
-                    background:
-                      activeTab === "available"
-                        ? "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)"
-                        : "transparent",
-                    color:
-                      activeTab === "available"
-                        ? "#000000"
-                        : "rgba(255,255,255,0.5)",
-                    boxShadow:
-                      activeTab === "available"
-                        ? `0 0 20px ${GREEN}40`
-                        : "none",
-                    transition: "all 0.2s",
-                  }}
-                  data-ocid="taskerpage.available.tab"
-                >
-                  <span className="text-base">⚡</span>
-                  <span className="hidden sm:inline">Available Tasks</span>
-                  <span className="sm:hidden">Available</span>
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-black"
-                    style={{
-                      background:
-                        activeTab === "available"
-                          ? "rgba(0,0,0,0.2)"
-                          : `${GREEN}20`,
-                      color: activeTab === "available" ? "#000" : GREEN,
-                    }}
-                  >
-                    {availableTasks.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("active")}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 sm:px-5 rounded-xl text-sm font-bold transition-all min-h-[44px]"
-                  style={{
-                    background:
-                      activeTab === "active"
-                        ? "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)"
-                        : "transparent",
-                    color:
-                      activeTab === "active"
-                        ? "#000000"
-                        : "rgba(255,255,255,0.5)",
-                    boxShadow:
-                      activeTab === "active" ? `0 0 20px ${GREEN}40` : "none",
-                    transition: "all 0.2s",
-                  }}
-                  data-ocid="taskerpage.active.tab"
-                >
-                  <span className="text-base">🚀</span>
-                  <span className="hidden sm:inline">My Active Tasks</span>
-                  <span className="sm:hidden">Active</span>
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-black"
-                    style={{
-                      background:
-                        activeTab === "active"
-                          ? "rgba(0,0,0,0.2)"
-                          : `${GREEN}20`,
-                      color: activeTab === "active" ? "#000" : GREEN,
-                    }}
-                  >
-                    {activeTasks.length}
-                  </span>
-                </button>
+                {(["available", "active"] as DashTab[]).map((tab) => {
+                  const count =
+                    tab === "available"
+                      ? availableTasks.length
+                      : activeTasks.length;
+                  const label =
+                    tab === "available" ? "Available Tasks" : "My Active Tasks";
+                  const short = tab === "available" ? "Available" : "Active";
+                  const icon = tab === "available" ? "⚡" : "🚀";
+                  const isActive = activeTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveTab(tab)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 sm:px-5 rounded-xl text-sm font-bold transition-all min-h-[44px]"
+                      style={{
+                        background: isActive
+                          ? "linear-gradient(135deg, #00E676 0%, #00ff90 55%, #00E676 100%)"
+                          : "transparent",
+                        color: isActive ? "#000000" : "rgba(255,255,255,0.5)",
+                        boxShadow: isActive ? `0 0 20px ${GREEN}40` : "none",
+                        transition: "all 0.2s",
+                      }}
+                      data-ocid={`taskerpage.${tab}.tab`}
+                    >
+                      <span className="text-base">{icon}</span>
+                      <span className="hidden sm:inline">{label}</span>
+                      <span className="sm:hidden">{short}</span>
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs font-black"
+                        style={{
+                          background: isActive
+                            ? "rgba(0,0,0,0.2)"
+                            : `${GREEN}20`,
+                          color: isActive ? "#000" : GREEN,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -997,7 +995,6 @@ export function TaskerPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Section header */}
                   <div
                     className="flex items-center gap-3 mb-4 p-4 rounded-xl"
                     style={{
@@ -1085,7 +1082,6 @@ export function TaskerPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Section header */}
                   <div
                     className="flex items-center gap-3 mb-4 p-4 rounded-xl"
                     style={{

@@ -182,7 +182,10 @@ export function TasksPage() {
               helper: "Local Helper",
               initials: t.category.slice(0, 2).toUpperCase(),
               rating: "5.0",
-              image: STATIC_TASKS[i % STATIC_TASKS.length]?.image ?? "",
+              image:
+                (t as any).imageUrl ||
+                STATIC_TASKS[i % STATIC_TASKS.length]?.image ||
+                "/assets/generated/task-default.dim_400x240.jpg",
             })),
           );
         }
@@ -231,7 +234,7 @@ export function TasksPage() {
             </p>
           </motion.div>
 
-          {/* Search + Filter bar */}
+          {/* Search + Filter */}
           <div className="flex flex-col sm:flex-row gap-3 mb-8">
             <div className="relative flex-1">
               <Search

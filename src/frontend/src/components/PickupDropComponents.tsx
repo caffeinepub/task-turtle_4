@@ -48,6 +48,12 @@ function calcNetEarning(taskerFee: bigint | number, boostFee: bigint | number) {
   return +(gross * 0.85).toFixed(2);
 }
 
+function calcPlatformFee(productWorth: number): number {
+  if (productWorth < 100) return 4;
+  if (productWorth < 300) return 7;
+  return 10;
+}
+
 const inputStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.04)",
   border: "1px solid rgba(255,255,255,0.1)",
@@ -91,6 +97,69 @@ export function PDStatusBadge({ status }: { status: string }) {
   );
 }
 
+// ── Field (top-level — must NOT be inside any other component) ────────────────
+function Field({
+  label,
+  id,
+  value,
+  placeholder,
+  onChange,
+  type = "text",
+  error,
+  icon,
+  onClearError,
+}: {
+  label: string;
+  id: string;
+  value: string;
+  placeholder: string;
+  onChange: (v: string) => void;
+  type?: string;
+  error?: string;
+  icon?: React.ReactNode;
+  onClearError?: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        htmlFor={id}
+        className="text-xs font-medium uppercase tracking-wide"
+        style={{ color: "rgba(255,255,255,0.5)" }}
+      >
+        {label} <span style={{ color: "#f87171" }}>*</span>
+      </label>
+      <div className="relative">
+        {icon && (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2">
+            {icon}
+          </span>
+        )}
+        <input
+          id={id}
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            onClearError?.(id);
+          }}
+          style={{ ...inputStyle, paddingLeft: icon ? 36 : 14 }}
+          data-ocid="pickupdrop.post.input"
+        />
+      </div>
+      {error && (
+        <p
+          className="text-xs"
+          style={{ color: "#f87171" }}
+          data-ocid="pickupdrop.post.error_state"
+        >
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── PickupDropPostForm ──────────────────────────────────────────────────────
 export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
   const { actor } = useActor();
@@ -112,7 +181,9 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
     productWorth: "",
   });
 
-  const payAmount = taskerFee + boostFee;
+  const productWorthNum = Number(fields.productWorth) || 0;
+  const platformFee = calcPlatformFee(productWorthNum);
+  const payAmount = taskerFee + boostFee + platformFee;
 
   function validate() {
     const e: Record<string, string> = {};
@@ -259,66 +330,6 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
     );
   }
 
-  function Field({
-    label,
-    id,
-    value,
-    placeholder,
-    onChange,
-    type = "text",
-    error,
-    icon,
-  }: {
-    label: string;
-    id: string;
-    value: string;
-    placeholder: string;
-    onChange: (v: string) => void;
-    type?: string;
-    error?: string;
-    icon?: React.ReactNode;
-  }) {
-    return (
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor={id}
-          className="text-xs font-medium uppercase tracking-wide"
-          style={{ color: "rgba(255,255,255,0.5)" }}
-        >
-          {label} <span style={{ color: "#f87171" }}>*</span>
-        </label>
-        <div className="relative">
-          {icon && (
-            <span className="absolute left-3 top-1/2 -translate-y-1/2">
-              {icon}
-            </span>
-          )}
-          <input
-            id={id}
-            type={type}
-            placeholder={placeholder}
-            value={value}
-            onChange={(e) => {
-              onChange(e.target.value);
-              setErrors((p) => ({ ...p, [id]: "" }));
-            }}
-            style={{ ...inputStyle, paddingLeft: icon ? 36 : 14 }}
-            data-ocid="pickupdrop.post.input"
-          />
-        </div>
-        {error && (
-          <p
-            className="text-xs"
-            style={{ color: "#f87171" }}
-            data-ocid="pickupdrop.post.error_state"
-          >
-            {error}
-          </p>
-        )}
-      </div>
-    );
-  }
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -371,6 +382,7 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
             placeholder="e.g. Rajesh Kumar"
             onChange={(v) => setFields((p) => ({ ...p, pickupOwnerName: v }))}
             error={errors.pickupOwnerName}
+            onClearError={(id) => setErrors((p) => ({ ...p, [id]: "" }))}
           />
           <Field
             label="Pickup Contact"
@@ -383,6 +395,7 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
             icon={
               <Phone size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
             }
+            onClearError={(id) => setErrors((p) => ({ ...p, [id]: "" }))}
           />
         </div>
         <Field
@@ -393,6 +406,7 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
           onChange={(v) => setFields((p) => ({ ...p, pickupLocation: v }))}
           error={errors.pickupLocation}
           icon={<MapPin size={13} style={{ color: "rgba(255,255,255,0.3)" }} />}
+          onClearError={(id) => setErrors((p) => ({ ...p, [id]: "" }))}
         />
       </section>
 
@@ -415,6 +429,7 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
             placeholder="e.g. Priya Sharma"
             onChange={(v) => setFields((p) => ({ ...p, dropOwnerName: v }))}
             error={errors.dropOwnerName}
+            onClearError={(id) => setErrors((p) => ({ ...p, [id]: "" }))}
           />
           <Field
             label="Drop Contact"
@@ -427,6 +442,7 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
             icon={
               <Phone size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
             }
+            onClearError={(id) => setErrors((p) => ({ ...p, [id]: "" }))}
           />
         </div>
         <Field
@@ -437,6 +453,7 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
           onChange={(v) => setFields((p) => ({ ...p, dropLocation: v }))}
           error={errors.dropLocation}
           icon={<MapPin size={13} style={{ color: "rgba(255,255,255,0.3)" }} />}
+          onClearError={(id) => setErrors((p) => ({ ...p, [id]: "" }))}
         />
       </section>
 
@@ -648,15 +665,20 @@ export function PickupDropPostForm({ onBack }: { onBack: () => void }) {
         >
           <div>
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-              You pay
+              Total Payable
             </p>
             <p className="text-xl font-bold" style={{ color: GREEN }}>
               ₹{payAmount}
             </p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-              Tasker Fee ₹{taskerFee}
-              {boostFee > 0 ? ` + Boost ₹${boostFee}` : ""}
-            </p>
+            <div className="flex flex-col gap-0.5 mt-1">
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                Tasker Fee ₹{taskerFee}
+                {boostFee > 0 ? ` + Boost ₹${boostFee}` : ""}
+              </p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                Platform Fee ₹{platformFee}
+              </p>
+            </div>
           </div>
           <Package size={20} style={{ color: `${GREEN}50` }} />
         </div>

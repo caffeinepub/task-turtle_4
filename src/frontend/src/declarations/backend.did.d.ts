@@ -21,22 +21,40 @@ export interface EscrowPayment {
 export type PaymentStatus = { 'PAID' : null } |
   { 'COMPLETED' : null } |
   { 'FAILED' : null };
+export interface PublicPickupDropTask {
+  'id' : string,
+  'razorpayPaymentId' : string,
+  'status' : string,
+  'pickupContact' : string,
+  'taskerFee' : bigint,
+  'pickupOwnerName' : string,
+  'createdAt' : bigint,
+  'dropOwnerName' : string,
+  'dropContact' : string,
+  'dropLocation' : string,
+  'razorpayOrderId' : string,
+  'acceptor' : [] | [Principal],
+  'boostFee' : bigint,
+  'productWorth' : bigint,
+  'pickupLocation' : string,
+  'poster' : Principal,
+}
 export interface PublicTask {
   'id' : string,
   'status' : TaskStatus,
   'completedAt' : [] | [bigint],
   'title' : string,
+  'taskerFee' : bigint,
+  'productAmount' : bigint,
   'createdAt' : bigint,
   'description' : string,
   'category' : string,
+  'boost' : bigint,
   'acceptor' : [] | [Principal],
   'acceptedAt' : [] | [bigint],
   'amount' : bigint,
   'location' : string,
   'poster' : Principal,
-  'taskerFee' : bigint,
-  'boost' : bigint,
-  'productAmount' : bigint,
 }
 export type Result = { 'ok' : null } |
   { 'err' : string };
@@ -93,25 +111,50 @@ export interface http_request_result {
 }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'acceptPickupDropTask' : ActorMethod<[string, string, string], Result>,
   'acceptTask' : ActorMethod<[string], [] | [PublicTask]>,
   'advanceTaskStage' : ActorMethod<[string, string], Result>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'cancelTask' : ActorMethod<[string], Result>,
+  'completePickupDropDelivery' : ActorMethod<[string, string], Result>,
+  'completePickupDropPickup' : ActorMethod<[string, string], Result>,
   'completeTask' : ActorMethod<[string, string], [] | [PublicTask]>,
   'countTasks' : ActorMethod<[], bigint>,
+  'createPickupDropTask' : ActorMethod<
+    [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      bigint,
+      bigint,
+      bigint,
+      string,
+      string,
+    ],
+    string
+  >,
   'createRazorpayOrder' : ActorMethod<[bigint, string, string, string], Result>,
   'createTask' : ActorMethod<
     [string, string, string, string, bigint, bigint, bigint],
     [] | [string]
   >,
+  'failPickupDropTask' : ActorMethod<[string], Result>,
+  'getAllPickupDropTasksAdmin' : ActorMethod<[], Array<PublicPickupDropTask>>,
   'getAllTasks' : ActorMethod<[], Array<PublicTask>>,
   'getAllUserProfiles' : ActorMethod<[], Array<UserProfileEntry>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMyAcceptedTasks' : ActorMethod<[], Array<PublicTask>>,
+  'getMyPickupDropAcceptedTasks' : ActorMethod<[], Array<PublicPickupDropTask>>,
+  'getMyPickupDropPostedTasks' : ActorMethod<[], Array<PublicPickupDropTask>>,
   'getMyPostedTasks' : ActorMethod<[], Array<PublicTask>>,
   'getPaymentByTask' : ActorMethod<[string], [] | [EscrowPayment]>,
   'getPayments' : ActorMethod<[], Array<EscrowPayment>>,
+  'getPickupDropTask' : ActorMethod<[string], [] | [PublicPickupDropTask]>,
+  'getPickupDropTasks' : ActorMethod<[], Array<PublicPickupDropTask>>,
   'getTask' : ActorMethod<[string], [] | [PublicTask]>,
   'getTaskParticipantProfiles' : ActorMethod<
     [string],

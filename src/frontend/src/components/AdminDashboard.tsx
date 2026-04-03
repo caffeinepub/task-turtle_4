@@ -29,6 +29,7 @@ import {
   calculatePlatformFee,
   getTaskerEarning,
 } from "../utils/platformFee";
+import { PickupDropAdminTab } from "./PickupDropComponents";
 
 const G = "#00E676";
 const CARD = "rgba(255,255,255,0.04)";
@@ -53,7 +54,8 @@ type Tab =
   | "taskers"
   | "payments"
   | "payouts"
-  | "profiles";
+  | "profiles"
+  | "pickup-drop";
 
 function truncate(s: string, n = 10) {
   if (!s) return "—";
@@ -2045,6 +2047,7 @@ export function AdminDashboard() {
     { key: "payments", label: "Payments" },
     { key: "payouts", label: "Payouts" },
     { key: "profiles", label: "Profiles" },
+    { key: "pickup-drop", label: "Pickup-Drop" },
   ];
 
   if (loading || isFetching) {
@@ -2181,6 +2184,7 @@ export function AdminDashboard() {
             {tab === "profiles" && (
               <ProfilesTab profileMap={profileMap} tasks={tasks} />
             )}
+            {tab === "pickup-drop" && <PickupDropAdminTab />}
           </motion.div>
         </AnimatePresence>
       </div>

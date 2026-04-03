@@ -6,6 +6,7 @@ import {
   MapPin,
   Phone,
   Tag,
+  Truck,
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -26,6 +27,12 @@ import {
 } from "../utils/platformFee";
 import { getSurgePrice, isSurgeActive } from "../utils/surgePricing";
 import { DEFAULT_TASK_IMAGE, getTaskImage } from "../utils/taskImage";
+
+import {
+  MyPickupDropTasks,
+  PickupDropFindTasks,
+  PickupDropPostForm,
+} from "../components/PickupDropComponents";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: Window & {
@@ -1866,6 +1873,193 @@ function FindTasksTab() {
   );
 }
 
+// ── Pickup-Drop Wrappers (additive only — no existing code modified) ─────────
+
+const GREEN_COLOR = "#00E676";
+const BLUE_COLOR = "#3B82F6";
+
+function PostTaskWrapper() {
+  const [taskType, setTaskType] = useState<
+    "selector" | "daily" | "pickup-drop"
+  >("selector");
+
+  if (taskType === "daily") return <PostTaskTab />;
+  if (taskType === "pickup-drop")
+    return <PickupDropPostForm onBack={() => setTaskType("selector")} />;
+
+  return (
+    <div className="flex flex-col gap-6" data-ocid="posttask.panel">
+      <div>
+        <h2 className="text-lg font-bold text-white">Choose Task Type</h2>
+        <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+          Select the kind of task you want to post
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Daily Task Card */}
+        <button
+          type="button"
+          onClick={() => setTaskType("daily")}
+          className="flex flex-col gap-4 p-6 rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+          style={{
+            background: "rgba(0,230,118,0.04)",
+            border: "1px solid rgba(0,230,118,0.2)",
+          }}
+          data-ocid="posttask.toggle"
+        >
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+            style={{ background: "rgba(0,230,118,0.12)" }}
+          >
+            🟢
+          </div>
+          <div>
+            <p className="text-white font-bold text-base">Daily Task</p>
+            <p
+              className="text-xs mt-1"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              Grocery, errands, delivery, cleaning, and more
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1.5 text-xs font-semibold"
+            style={{ color: GREEN_COLOR }}
+          >
+            Post a daily task →
+          </div>
+        </button>
+
+        {/* Pickup-Drop Task Card */}
+        <button
+          type="button"
+          onClick={() => setTaskType("pickup-drop")}
+          className="flex flex-col gap-4 p-6 rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+          style={{
+            background: "rgba(59,130,246,0.04)",
+            border: "1px solid rgba(59,130,246,0.2)",
+          }}
+          data-ocid="posttask.toggle"
+        >
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(59,130,246,0.12)" }}
+          >
+            <Truck size={22} style={{ color: BLUE_COLOR }} />
+          </div>
+          <div>
+            <p className="text-white font-bold text-base">Pickup-Drop Task</p>
+            <p
+              className="text-xs mt-1"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              Secure deposit-based pickup & delivery system
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1.5 text-xs font-semibold"
+            style={{ color: BLUE_COLOR }}
+          >
+            Post a pickup-drop task →
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FindTasksWrapper() {
+  const [category, setCategory] = useState<"daily" | "pickup-drop">("daily");
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Category tabs */}
+      <div
+        className="flex gap-2 p-1 rounded-xl"
+        style={{ background: "rgba(255,255,255,0.04)" }}
+        data-ocid="findtasks.tab"
+      >
+        <button
+          type="button"
+          onClick={() => setCategory("daily")}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+          style={{
+            background: category === "daily" ? GREEN_COLOR : "transparent",
+            color: category === "daily" ? "#000" : "rgba(255,255,255,0.5)",
+            boxShadow:
+              category === "daily" ? `0 0 12px ${GREEN_COLOR}40` : "none",
+          }}
+          data-ocid="findtasks.daily.tab"
+        >
+          🟢 Daily Tasks
+        </button>
+        <button
+          type="button"
+          onClick={() => setCategory("pickup-drop")}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+          style={{
+            background: category === "pickup-drop" ? BLUE_COLOR : "transparent",
+            color:
+              category === "pickup-drop" ? "#fff" : "rgba(255,255,255,0.5)",
+            boxShadow:
+              category === "pickup-drop" ? `0 0 12px ${BLUE_COLOR}40` : "none",
+          }}
+          data-ocid="findtasks.pickup-drop.tab"
+        >
+          🔵 Pickup-Drop Tasks
+        </button>
+      </div>
+      {category === "daily" ? <FindTasksTab /> : <PickupDropFindTasks />}
+    </div>
+  );
+}
+
+function MyTasksWrapper() {
+  const [category, setCategory] = useState<"daily" | "pickup-drop">("daily");
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Category tabs */}
+      <div
+        className="flex gap-2 p-1 rounded-xl"
+        style={{ background: "rgba(255,255,255,0.04)" }}
+        data-ocid="mytasks.tab"
+      >
+        <button
+          type="button"
+          onClick={() => setCategory("daily")}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+          style={{
+            background: category === "daily" ? GREEN_COLOR : "transparent",
+            color: category === "daily" ? "#000" : "rgba(255,255,255,0.5)",
+            boxShadow:
+              category === "daily" ? `0 0 12px ${GREEN_COLOR}40` : "none",
+          }}
+          data-ocid="mytasks.daily.tab"
+        >
+          🟢 My Daily Tasks
+        </button>
+        <button
+          type="button"
+          onClick={() => setCategory("pickup-drop")}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+          style={{
+            background: category === "pickup-drop" ? BLUE_COLOR : "transparent",
+            color:
+              category === "pickup-drop" ? "#fff" : "rgba(255,255,255,0.5)",
+            boxShadow:
+              category === "pickup-drop" ? `0 0 12px ${BLUE_COLOR}40` : "none",
+          }}
+          data-ocid="mytasks.pickup-drop.tab"
+        >
+          🔵 My Pickup-Drop Tasks
+        </button>
+      </div>
+      {category === "daily" ? <MyTasksTab /> : <MyPickupDropTasks />}
+    </div>
+  );
+}
+
 // ── Dashboard Page ────────────────────────────────────────────────────────────
 export function DashboardPage() {
   const { identity } = useInternetIdentity();
@@ -1931,9 +2125,9 @@ export function DashboardPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18 }}
           >
-            {tab === "my-tasks" && <MyTasksTab />}
-            {tab === "post-task" && <PostTaskTab />}
-            {tab === "find-tasks" && <FindTasksTab />}
+            {tab === "my-tasks" && <MyTasksWrapper />}
+            {tab === "post-task" && <PostTaskWrapper />}
+            {tab === "find-tasks" && <FindTasksWrapper />}
           </motion.div>
         </AnimatePresence>
       </main>

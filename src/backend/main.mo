@@ -7,16 +7,11 @@ import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Array "mo:core/Array";
 import List "mo:core/List";
-import Iter "mo:core/Iter";
-import Queue "mo:core/Queue";
-
-
 import Random "mo:core/Random";
 import Option "mo:core/Option";
+import Iter "mo:core/Iter";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-
-// Specify the data migration function in with-clause
 
 actor {
   type PaymentStatus = {
@@ -99,7 +94,7 @@ actor {
     taskerProfile : ?UserProfile;
   };
 
-  // Timestamps stored separately to avoid stable variable migration
+  // Timestamps stored separately to avoid structural actor migration
   type TaskTimestamps = {
     acceptedAt : ?Int;
     completedAt : ?Int;
@@ -131,6 +126,73 @@ actor {
     productAmount : Nat;
   };
 
+  // ========== PICKUP-DROP TASK MODULE ==========
+  // Store task status as variant for stable variable compatibility
+  type PickupDropTaskStatus = {
+    #open;
+    #accepted;
+    #in_progress;
+    #completed;
+    #failed;
+  };
+
+  type PickupDropTask = {
+    id : Text;
+    pickupOwnerName : Text;
+    pickupContact : Text;
+    pickupLocation : Text;
+    dropOwnerName : Text;
+    dropContact : Text;
+    dropLocation : Text;
+    productWorth : Nat;
+    taskerFee : Nat;
+    boostFee : Nat;
+    status : PickupDropTaskStatus;
+    poster : Principal;
+    acceptor : ?Principal;
+    razorpayOrderId : Text;
+    razorpayPaymentId : Text;
+    createdAt : Int;
+  };
+
+  // Store active task status as variant for stable variable compatibility
+  type PickupDropActiveTaskStatus = {
+    #pending_pickup;
+    #picked_up;
+    #delivered;
+    #failed;
+  };
+
+  type PickupDropActiveTask = {
+    taskId : Text;
+    taskerId : Principal;
+    taskerPaymentDone : Bool;
+    status : PickupDropActiveTaskStatus;
+    otpPickup : Text;
+    otpDelivery : Text;
+    taskerOrderId : Text;
+    taskerPaymentId : Text;
+  };
+
+  public type PublicPickupDropTask = {
+    id : Text;
+    pickupOwnerName : Text;
+    pickupContact : Text;
+    pickupLocation : Text;
+    dropOwnerName : Text;
+    dropContact : Text;
+    dropLocation : Text;
+    productWorth : Nat;
+    taskerFee : Nat;
+    boostFee : Nat;
+    status : Text;
+    poster : Principal;
+    acceptor : ?Principal;
+    razorpayOrderId : Text;
+    razorpayPaymentId : Text;
+    createdAt : Int;
+  };
+
   // Authorization state
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -143,7 +205,10 @@ actor {
   let taskStages = Map.empty<Text, TaskStageRecord>();
   let taskPricing = Map.empty<Text, TaskPricing>();
 
-  // Razorpay Basic Auth: base64(key_id:key_secret)
+  // Pickup-Drop Task storage
+  let pickupDropTasks = Map.empty<Text, PickupDropTask>();
+  let pickupDropActiveTasks = Map.empty<Text, PickupDropActiveTask>();
+
   let RAZORPAY_BASIC_AUTH = "cnpwX2xpdmVfU1JOYlR3eUVtelFTdk86MEszRTBxMFJJSmhoNDROUUw0YmZnSW5m";
 
   public type RazorpayOrderResponse = {
@@ -412,7 +477,7 @@ actor {
     // Validate stage progression (must advance forward only)
     let currentOrder = getStageOrder(currentStageRecord.stage);
     let newOrder = getStageOrder(newStageVariant);
-    
+
     if (newOrder <= currentOrder) {
       return #err("Stage must advance forward only");
     };
@@ -466,9 +531,9 @@ actor {
         };
         switch (task.status) {
           case (#open) {
-            ignore tasks.remove(taskId);
-            ignore taskTimestamps.remove(taskId);
-            ignore taskStages.remove(taskId);
+            tasks.remove(taskId);
+            taskTimestamps.remove(taskId);
+            taskStages.remove(taskId);
             #ok;
           };
           case (_) { #err("Task cannot be cancelled after being accepted") };
@@ -588,6 +653,292 @@ actor {
         };
       };
     };
+  };
+
+  // ========== PICKUP-DROP TASK FUNCTIONS ==========
+
+  // Helper: convert PickupDropTask to PublicPickupDropTask
+  func toPublicPickupDropTask(task : PickupDropTask) : PublicPickupDropTask {
+    {
+      id = task.id;
+      pickupOwnerName = task.pickupOwnerName;
+      pickupContact = task.pickupContact;
+      pickupLocation = task.pickupLocation;
+      dropOwnerName = task.dropOwnerName;
+      dropContact = task.dropContact;
+      dropLocation = task.dropLocation;
+      productWorth = task.productWorth;
+      taskerFee = task.taskerFee;
+      boostFee = task.boostFee;
+      status = switch (task.status) {
+        case (#open) { "open" };
+        case (#accepted) { "accepted" };
+        case (#in_progress) { "in_progress" };
+        case (#completed) { "completed" };
+        case (#failed) { "failed" };
+      };
+      poster = task.poster;
+      acceptor = task.acceptor;
+      razorpayOrderId = task.razorpayOrderId;
+      razorpayPaymentId = task.razorpayPaymentId;
+      createdAt = task.createdAt;
+    };
+  };
+
+  // Create pickup-drop task - requires user permission
+  public shared ({ caller }) func createPickupDropTask(
+    pickupOwnerName : Text,
+    pickupContact : Text,
+    pickupLocation : Text,
+    dropOwnerName : Text,
+    dropContact : Text,
+    dropLocation : Text,
+    productWorth : Nat,
+    taskerFee : Nat,
+    boostFee : Nat,
+    razorpayOrderId : Text,
+    razorpayPaymentId : Text
+  ) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create pickup-drop tasks");
+    };
+
+    let taskId = generateUniqueId();
+    let newTask : PickupDropTask = {
+      id = taskId;
+      pickupOwnerName;
+      pickupContact;
+      pickupLocation;
+      dropOwnerName;
+      dropContact;
+      dropLocation;
+      productWorth;
+      taskerFee;
+      boostFee;
+      status = #open;
+      poster = caller;
+      acceptor = null;
+      razorpayOrderId;
+      razorpayPaymentId;
+      createdAt = Time.now();
+    };
+
+    pickupDropTasks.add(taskId, newTask);
+    taskId;
+  };
+
+  // Get all open pickup-drop tasks - public query
+  public query ({ caller }) func getPickupDropTasks() : async [PublicPickupDropTask] {
+    pickupDropTasks.values()
+      .toArray()
+      .filter(func(task) { 
+        switch (task.status) {
+          case (#open) { true };
+          case (_) { false };
+        };
+      })
+      .map(toPublicPickupDropTask);
+  };
+
+  // Get my posted pickup-drop tasks - requires user permission
+  public query ({ caller }) func getMyPickupDropPostedTasks() : async [PublicPickupDropTask] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view their posted tasks");
+    };
+
+    pickupDropTasks.filter(func(_id, task) { task.poster == caller })
+      .values()
+      .toArray()
+      .map(toPublicPickupDropTask);
+  };
+
+  // Get my accepted pickup-drop tasks - requires user permission
+  public query ({ caller }) func getMyPickupDropAcceptedTasks() : async [PublicPickupDropTask] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view their accepted tasks");
+    };
+
+    pickupDropTasks.values()
+      .toArray()
+      .filter(func(task) {
+        switch (task.acceptor) {
+          case (?acceptor) { acceptor == caller };
+          case (null) { false };
+        };
+      })
+      .map(toPublicPickupDropTask);
+  };
+
+  // Accept pickup-drop task - requires user permission
+  public shared ({ caller }) func acceptPickupDropTask(
+    taskId : Text,
+    taskerOrderId : Text,
+    taskerPaymentId : Text
+  ) : async Result {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can accept pickup-drop tasks");
+    };
+
+    let task = switch (pickupDropTasks.get(taskId)) {
+      case (null) { Runtime.trap("Task not found") };
+      case (?task) { task };
+    };
+
+    if (task.poster == caller) {
+      Runtime.trap("Unauthorized: Cannot accept your own task");
+    };
+
+    switch (task.status) {
+      case (#open) {
+        // Generate OTPs
+        let otpPickup = await generateOtp();
+        let otpDelivery = await generateOtp();
+
+        // Update task
+        let updatedTask = {
+          task with
+          status = #accepted;
+          acceptor = ?caller;
+        };
+        pickupDropTasks.add(taskId, updatedTask);
+
+        // Create active task record
+        let activeTask : PickupDropActiveTask = {
+          taskId;
+          taskerId = caller;
+          taskerPaymentDone = true;
+          status = #pending_pickup;
+          otpPickup;
+          otpDelivery;
+          taskerOrderId;
+          taskerPaymentId;
+        };
+        pickupDropActiveTasks.add(taskId, activeTask);
+
+        #ok;
+      };
+      case (_) { #err("Task is not open") };
+    };
+  };
+
+  // Complete pickup - requires user permission
+  public shared ({ caller }) func completePickupDropPickup(taskId : Text, otp : Text) : async Result {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can complete pickup");
+    };
+
+    let activeTask = switch (pickupDropActiveTasks.get(taskId)) {
+      case (null) { Runtime.trap("Active task not found") };
+      case (?task) { task };
+    };
+
+    if (activeTask.taskerId != caller) {
+      Runtime.trap("Unauthorized: Only the tasker can complete pickup");
+    };
+
+    if (activeTask.otpPickup != otp) {
+      Runtime.trap("Incorrect pickup OTP");
+    };
+
+    switch (activeTask.status) {
+      case (#pending_pickup) {
+        // Update active task status
+        let updatedActiveTask = { activeTask with status = #picked_up };
+        pickupDropActiveTasks.add(taskId, updatedActiveTask);
+
+        // Update main task status
+        let task = switch (pickupDropTasks.get(taskId)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?task) { task };
+        };
+        let updatedTask = { task with status = #in_progress };
+        pickupDropTasks.add(taskId, updatedTask);
+
+        #ok;
+      };
+      case (_) { #err("Task is not in pending_pickup state") };
+    };
+  };
+
+  // Complete delivery - requires user permission
+  public shared ({ caller }) func completePickupDropDelivery(taskId : Text, otp : Text) : async Result {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can complete delivery");
+    };
+
+    let activeTask = switch (pickupDropActiveTasks.get(taskId)) {
+      case (null) { Runtime.trap("Active task not found") };
+      case (?task) { task };
+    };
+
+    if (activeTask.taskerId != caller) {
+      Runtime.trap("Unauthorized: Only the tasker can complete delivery");
+    };
+
+    if (activeTask.otpDelivery != otp) {
+      Runtime.trap("Incorrect delivery OTP");
+    };
+
+    switch (activeTask.status) {
+      case (#picked_up) {
+        // Update active task status
+        let updatedActiveTask = { activeTask with status = #delivered };
+        pickupDropActiveTasks.add(taskId, updatedActiveTask);
+
+        // Update main task status
+        let task = switch (pickupDropTasks.get(taskId)) {
+          case (null) { Runtime.trap("Task not found") };
+          case (?task) { task };
+        };
+        let updatedTask = { task with status = #completed };
+        pickupDropTasks.add(taskId, updatedTask);
+
+        #ok;
+      };
+      case (_) { #err("Task is not in picked_up state") };
+    };
+  };
+
+  // Get single pickup-drop task - public query
+  public query ({ caller }) func getPickupDropTask(taskId : Text) : async ?PublicPickupDropTask {
+    switch (pickupDropTasks.get(taskId)) {
+      case (null) { null };
+      case (?task) { ?toPublicPickupDropTask(task) };
+    };
+  };
+
+  // Get all pickup-drop tasks - admin only
+  public query ({ caller }) func getAllPickupDropTasksAdmin() : async [PublicPickupDropTask] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all pickup-drop tasks");
+    };
+    pickupDropTasks.values().toArray().map(toPublicPickupDropTask);
+  };
+
+  // Fail pickup-drop task - admin only
+  public shared ({ caller }) func failPickupDropTask(taskId : Text) : async Result {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can fail tasks");
+    };
+
+    let task = switch (pickupDropTasks.get(taskId)) {
+      case (null) { return #err("Task not found") };
+      case (?task) { task };
+    };
+
+    let updatedTask = { task with status = #failed };
+    pickupDropTasks.add(taskId, updatedTask);
+
+    // Update active task if exists
+    switch (pickupDropActiveTasks.get(taskId)) {
+      case (?activeTask) {
+        let updatedActiveTask = { activeTask with status = #failed };
+        pickupDropActiveTasks.add(taskId, updatedActiveTask);
+      };
+      case (null) { };
+    };
+
+    #ok;
   };
 
   // Helper functions

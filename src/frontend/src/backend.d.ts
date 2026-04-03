@@ -12,6 +12,24 @@ export interface TransformationOutput {
     body: Uint8Array;
     headers: Array<http_header>;
 }
+export interface PublicPickupDropTask {
+    id: string;
+    razorpayPaymentId: string;
+    status: string;
+    pickupContact: string;
+    taskerFee: bigint;
+    pickupOwnerName: string;
+    createdAt: bigint;
+    dropOwnerName: string;
+    dropContact: string;
+    dropLocation: string;
+    razorpayOrderId: string;
+    acceptor?: Principal;
+    boostFee: bigint;
+    productWorth: bigint;
+    pickupLocation: string;
+    poster: Principal;
+}
 export interface UserProfileEntry {
     principal: string;
     profile: UserProfile;
@@ -34,17 +52,17 @@ export interface PublicTask {
     status: TaskStatus;
     completedAt?: bigint;
     title: string;
+    taskerFee: bigint;
+    productAmount: bigint;
     createdAt: bigint;
     description: string;
     category: string;
+    boost: bigint;
     acceptor?: Principal;
     acceptedAt?: bigint;
     amount: bigint;
     location: string;
     poster: Principal;
-    taskerFee: bigint;
-    boost: bigint;
-    productAmount: bigint;
 }
 export interface TaskStageResponse {
     stage: string;
@@ -106,22 +124,32 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    acceptPickupDropTask(taskId: string, taskerOrderId: string, taskerPaymentId: string): Promise<Result>;
     acceptTask(taskId: string): Promise<PublicTask | null>;
     advanceTaskStage(taskId: string, newStage: string): Promise<Result>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     cancelTask(taskId: string): Promise<Result>;
+    completePickupDropDelivery(taskId: string, otp: string): Promise<Result>;
+    completePickupDropPickup(taskId: string, otp: string): Promise<Result>;
     completeTask(taskId: string, submittedOtp: string): Promise<PublicTask | null>;
     countTasks(): Promise<bigint>;
+    createPickupDropTask(pickupOwnerName: string, pickupContact: string, pickupLocation: string, dropOwnerName: string, dropContact: string, dropLocation: string, productWorth: bigint, taskerFee: bigint, boostFee: bigint, razorpayOrderId: string, razorpayPaymentId: string): Promise<string>;
     createRazorpayOrder(amount: bigint, taskId: string, _userId: string, _taskerUpiId: string): Promise<Result>;
     createTask(title: string, description: string, category: string, location: string, amount: bigint, taskerFee: bigint, boost: bigint): Promise<string | null>;
+    failPickupDropTask(taskId: string): Promise<Result>;
+    getAllPickupDropTasksAdmin(): Promise<Array<PublicPickupDropTask>>;
     getAllTasks(): Promise<Array<PublicTask>>;
     getAllUserProfiles(): Promise<Array<UserProfileEntry>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMyAcceptedTasks(): Promise<Array<PublicTask>>;
+    getMyPickupDropAcceptedTasks(): Promise<Array<PublicPickupDropTask>>;
+    getMyPickupDropPostedTasks(): Promise<Array<PublicPickupDropTask>>;
     getMyPostedTasks(): Promise<Array<PublicTask>>;
     getPaymentByTask(taskId: string): Promise<EscrowPayment | null>;
     getPayments(): Promise<Array<EscrowPayment>>;
+    getPickupDropTask(taskId: string): Promise<PublicPickupDropTask | null>;
+    getPickupDropTasks(): Promise<Array<PublicPickupDropTask>>;
     getTask(taskId: string): Promise<PublicTask | null>;
     getTaskParticipantProfiles(taskId: string): Promise<TaskParticipantProfiles | null>;
     getTaskStage(taskId: string): Promise<TaskStageResponse | null>;

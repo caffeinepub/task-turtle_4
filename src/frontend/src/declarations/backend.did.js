@@ -8,6 +8,7 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
 export const TaskStatus = IDL.Variant({
   'open' : IDL.Null,
   'completed' : IDL.Null,
@@ -18,23 +19,40 @@ export const PublicTask = IDL.Record({
   'status' : TaskStatus,
   'completedAt' : IDL.Opt(IDL.Int),
   'title' : IDL.Text,
+  'taskerFee' : IDL.Nat,
+  'productAmount' : IDL.Nat,
   'createdAt' : IDL.Int,
   'description' : IDL.Text,
   'category' : IDL.Text,
+  'boost' : IDL.Nat,
   'acceptor' : IDL.Opt(IDL.Principal),
   'acceptedAt' : IDL.Opt(IDL.Int),
   'amount' : IDL.Nat,
   'location' : IDL.Text,
   'poster' : IDL.Principal,
-  'taskerFee' : IDL.Nat,
-  'boost' : IDL.Nat,
-  'productAmount' : IDL.Nat,
 });
-export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
+});
+export const PublicPickupDropTask = IDL.Record({
+  'id' : IDL.Text,
+  'razorpayPaymentId' : IDL.Text,
+  'status' : IDL.Text,
+  'pickupContact' : IDL.Text,
+  'taskerFee' : IDL.Nat,
+  'pickupOwnerName' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'dropOwnerName' : IDL.Text,
+  'dropContact' : IDL.Text,
+  'dropLocation' : IDL.Text,
+  'razorpayOrderId' : IDL.Text,
+  'acceptor' : IDL.Opt(IDL.Principal),
+  'boostFee' : IDL.Nat,
+  'productWorth' : IDL.Nat,
+  'pickupLocation' : IDL.Text,
+  'poster' : IDL.Principal,
 });
 export const UserProfile = IDL.Record({
   'studentId' : IDL.Opt(IDL.Text),
@@ -103,12 +121,36 @@ export const TransformationOutput = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'acceptPickupDropTask' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [Result],
+      [],
+    ),
   'acceptTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], []),
   'advanceTaskStage' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'cancelTask' : IDL.Func([IDL.Text], [Result], []),
+  'completePickupDropDelivery' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
+  'completePickupDropPickup' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
   'completeTask' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(PublicTask)], []),
   'countTasks' : IDL.Func([], [IDL.Nat], ['query']),
+  'createPickupDropTask' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Text,
+        IDL.Text,
+      ],
+      [IDL.Text],
+      [],
+    ),
   'createRazorpayOrder' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
       [Result],
@@ -119,11 +161,27 @@ export const idlService = IDL.Service({
       [IDL.Opt(IDL.Text)],
       [],
     ),
+  'failPickupDropTask' : IDL.Func([IDL.Text], [Result], []),
+  'getAllPickupDropTasksAdmin' : IDL.Func(
+      [],
+      [IDL.Vec(PublicPickupDropTask)],
+      ['query'],
+    ),
   'getAllTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
   'getAllUserProfiles' : IDL.Func([], [IDL.Vec(UserProfileEntry)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getMyAcceptedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
+  'getMyPickupDropAcceptedTasks' : IDL.Func(
+      [],
+      [IDL.Vec(PublicPickupDropTask)],
+      ['query'],
+    ),
+  'getMyPickupDropPostedTasks' : IDL.Func(
+      [],
+      [IDL.Vec(PublicPickupDropTask)],
+      ['query'],
+    ),
   'getMyPostedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
   'getPaymentByTask' : IDL.Func(
       [IDL.Text],
@@ -131,6 +189,16 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getPayments' : IDL.Func([], [IDL.Vec(EscrowPayment)], ['query']),
+  'getPickupDropTask' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(PublicPickupDropTask)],
+      ['query'],
+    ),
+  'getPickupDropTasks' : IDL.Func(
+      [],
+      [IDL.Vec(PublicPickupDropTask)],
+      ['query'],
+    ),
   'getTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], ['query']),
   'getTaskParticipantProfiles' : IDL.Func(
       [IDL.Text],
@@ -166,6 +234,7 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
   const TaskStatus = IDL.Variant({
     'open' : IDL.Null,
     'completed' : IDL.Null,
@@ -176,23 +245,40 @@ export const idlFactory = ({ IDL }) => {
     'status' : TaskStatus,
     'completedAt' : IDL.Opt(IDL.Int),
     'title' : IDL.Text,
+    'taskerFee' : IDL.Nat,
+    'productAmount' : IDL.Nat,
     'createdAt' : IDL.Int,
     'description' : IDL.Text,
     'category' : IDL.Text,
+    'boost' : IDL.Nat,
     'acceptor' : IDL.Opt(IDL.Principal),
     'acceptedAt' : IDL.Opt(IDL.Int),
     'amount' : IDL.Nat,
     'location' : IDL.Text,
     'poster' : IDL.Principal,
-    'taskerFee' : IDL.Nat,
-    'boost' : IDL.Nat,
-    'productAmount' : IDL.Nat,
   });
-  const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const PublicPickupDropTask = IDL.Record({
+    'id' : IDL.Text,
+    'razorpayPaymentId' : IDL.Text,
+    'status' : IDL.Text,
+    'pickupContact' : IDL.Text,
+    'taskerFee' : IDL.Nat,
+    'pickupOwnerName' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'dropOwnerName' : IDL.Text,
+    'dropContact' : IDL.Text,
+    'dropLocation' : IDL.Text,
+    'razorpayOrderId' : IDL.Text,
+    'acceptor' : IDL.Opt(IDL.Principal),
+    'boostFee' : IDL.Nat,
+    'productWorth' : IDL.Nat,
+    'pickupLocation' : IDL.Text,
+    'poster' : IDL.Principal,
   });
   const UserProfile = IDL.Record({
     'studentId' : IDL.Opt(IDL.Text),
@@ -258,12 +344,36 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'acceptPickupDropTask' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [Result],
+        [],
+      ),
     'acceptTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], []),
     'advanceTaskStage' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'cancelTask' : IDL.Func([IDL.Text], [Result], []),
+    'completePickupDropDelivery' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
+    'completePickupDropPickup' : IDL.Func([IDL.Text, IDL.Text], [Result], []),
     'completeTask' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(PublicTask)], []),
     'countTasks' : IDL.Func([], [IDL.Nat], ['query']),
+    'createPickupDropTask' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Text,
+          IDL.Text,
+        ],
+        [IDL.Text],
+        [],
+      ),
     'createRazorpayOrder' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text, IDL.Text],
         [Result],
@@ -274,11 +384,27 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(IDL.Text)],
         [],
       ),
+    'failPickupDropTask' : IDL.Func([IDL.Text], [Result], []),
+    'getAllPickupDropTasksAdmin' : IDL.Func(
+        [],
+        [IDL.Vec(PublicPickupDropTask)],
+        ['query'],
+      ),
     'getAllTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
     'getAllUserProfiles' : IDL.Func([], [IDL.Vec(UserProfileEntry)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getMyAcceptedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
+    'getMyPickupDropAcceptedTasks' : IDL.Func(
+        [],
+        [IDL.Vec(PublicPickupDropTask)],
+        ['query'],
+      ),
+    'getMyPickupDropPostedTasks' : IDL.Func(
+        [],
+        [IDL.Vec(PublicPickupDropTask)],
+        ['query'],
+      ),
     'getMyPostedTasks' : IDL.Func([], [IDL.Vec(PublicTask)], ['query']),
     'getPaymentByTask' : IDL.Func(
         [IDL.Text],
@@ -286,6 +412,16 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getPayments' : IDL.Func([], [IDL.Vec(EscrowPayment)], ['query']),
+    'getPickupDropTask' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(PublicPickupDropTask)],
+        ['query'],
+      ),
+    'getPickupDropTasks' : IDL.Func(
+        [],
+        [IDL.Vec(PublicPickupDropTask)],
+        ['query'],
+      ),
     'getTask' : IDL.Func([IDL.Text], [IDL.Opt(PublicTask)], ['query']),
     'getTaskParticipantProfiles' : IDL.Func(
         [IDL.Text],

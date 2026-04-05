@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const YT_API_KEY = "AIzaSyAZIDVP-08VUxVzNIYALm7JKzAHuW_M0SU";
-// Channel ID for @taskturtle (resolved from handle)
 const CHANNEL_HANDLE = "taskturtle";
+const SLIDE_INTERVAL = 3000;
+const GAP = 16;
 
 interface YTVideo {
   videoId: string;
@@ -15,7 +16,7 @@ function YouTubeLogo({ size = 28 }: { size?: number }) {
   return (
     <svg
       width={size}
-      height={(size * 20) / 28}
+      height={Math.round((size * 20) / 28)}
       viewBox="0 0 28 20"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -62,7 +63,6 @@ async function fetchLatestVideos(channelId: string): Promise<YTVideo[]> {
     }) => ({
       videoId: item.id.videoId,
       title: item.snippet.title,
-      // Prefer maxres, fallback to high, then standard
       thumbnail:
         item.snippet.thumbnails?.maxres?.url ||
         `https://i.ytimg.com/vi/${item.id.videoId}/maxresdefault.jpg`,
@@ -71,32 +71,47 @@ async function fetchLatestVideos(channelId: string): Promise<YTVideo[]> {
   );
 }
 
-const GREEN = "#00E676";
-const SLIDE_INTERVAL = 3000;
+function handleThumbError(
+  e: React.SyntheticEvent<HTMLImageElement>,
+  videoId: string,
+) {
+  const el = e.currentTarget;
+  const src = el.src;
+  if (src.includes("maxresdefault")) {
+    el.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  } else if (src.includes("hqdefault")) {
+    el.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+  }
+}
 
 export function YouTubeSlider() {
   const [videos, setVideos] = useState<YTVideo[]>([]);
   const [channelId, setChannelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // current index into loopedVideos
   const [current, setCurrent] = useState(0);
+  const [noTransition, setNoTransition] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Container ref for measuring card width
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cardWidth, setCardWidth] = useState(0);
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resetPendingRef = useRef(false);
 
-  // Resolve channel ID on mount
+  // Resolve channel ID
   useEffect(() => {
     resolveChannelId(CHANNEL_HANDLE).then((id) => {
       if (id) setChannelId(id);
-      else
-        setError(
-          "Could not find YouTube channel. Please check the channel handle.",
-        );
+      else setError("Could not find YouTube channel.");
     });
   }, []);
 
-  // Fetch videos when channelId is available, and auto-refresh every 5 min
+  // Load videos
   const loadVideos = useCallback(async (chId: string) => {
     try {
       setError(null);
@@ -105,7 +120,6 @@ export function YouTubeSlider() {
         setError("No videos found on this channel yet.");
       } else {
         setVideos(vids);
-        setCurrent(0);
       }
     } catch {
       setError("Failed to load videos. Please try again later.");
@@ -117,7 +131,6 @@ export function YouTubeSlider() {
   useEffect(() => {
     if (!channelId) return;
     loadVideos(channelId);
-    // Auto-refresh every 5 minutes
     refreshRef.current = setInterval(
       () => loadVideos(channelId),
       5 * 60 * 1000,
@@ -127,67 +140,135 @@ export function YouTubeSlider() {
     };
   }, [channelId, loadVideos]);
 
-  // Visible count based on viewport (tracked via state)
-  const [visibleCount, setVisibleCount] = useState(3);
+  // Measure container and compute card width
   useEffect(() => {
-    function updateVisible() {
-      const w = window.innerWidth;
-      if (w < 640) setVisibleCount(1);
-      else if (w < 1024) setVisibleCount(2);
-      else setVisibleCount(3);
+    function measure() {
+      if (!containerRef.current) return;
+      const w = containerRef.current.offsetWidth;
+      const cols =
+        window.innerWidth < 640 ? 1 : window.innerWidth < 1024 ? 2 : 3;
+      setCardWidth((w - GAP * (cols - 1)) / cols);
     }
-    updateVisible();
-    window.addEventListener("resize", updateVisible);
-    return () => window.removeEventListener("resize", updateVisible);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, []);
 
-  const maxIndex = Math.max(0, videos.length - visibleCount);
-
-  // Auto-slide
+  // Re-measure after videos load so containerRef is in DOM
   useEffect(() => {
-    if (isPaused || videos.length === 0) return;
-    intervalRef.current = setInterval(() => {
-      setIsTransitioning(true);
-      setCurrent((prev) => {
-        const next = prev + 1;
-        if (next > maxIndex) return 0;
-        return next;
+    if (videos.length === 0) return;
+    if (!containerRef.current) return;
+    const w = containerRef.current.offsetWidth;
+    const cols = window.innerWidth < 640 ? 1 : window.innerWidth < 1024 ? 2 : 3;
+    setCardWidth((w - GAP * (cols - 1)) / cols);
+  }, [videos.length]);
+
+  // Infinite loop: triplicate videos, start in middle copy
+  const loopedVideos =
+    videos.length > 0 ? [...videos, ...videos, ...videos] : [];
+  const startIndex = videos.length; // middle copy start
+
+  // Initialize current to middle copy when videos load
+  useEffect(() => {
+    if (videos.length > 0) {
+      setCurrent(videos.length);
+    }
+  }, [videos.length]);
+
+  // Handle infinite loop reset after transition ends
+  const handleTransitionEnd = useCallback(() => {
+    if (!resetPendingRef.current) return;
+    resetPendingRef.current = false;
+    setNoTransition(true);
+    setCurrent((prev) => {
+      // if we've gone past the 3rd copy start, reset to middle copy
+      if (prev >= videos.length * 2) {
+        return prev - videos.length;
+      }
+      // if we've gone before the middle copy, reset to 3rd copy equivalent
+      if (prev < videos.length) {
+        return prev + videos.length;
+      }
+      return prev;
+    });
+    // Re-enable transition after a microtask
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setNoTransition(false);
       });
-      setTimeout(() => setIsTransitioning(false), 400);
-    }, SLIDE_INTERVAL);
+    });
+  }, [videos.length]);
+
+  const goNextRef = useRef(() => {});
+  goNextRef.current = () => {
+    setCurrent((prev) => {
+      const next = prev + 1;
+      if (next >= videos.length * 2) {
+        resetPendingRef.current = true;
+      }
+      return next;
+    });
+  };
+
+  function goNext() {
+    goNextRef.current();
+  }
+
+  function goPrev() {
+    setCurrent((prev) => {
+      const next = prev - 1;
+      if (next < videos.length) {
+        resetPendingRef.current = true;
+      }
+      return next;
+    });
+  }
+
+  function goToDot(dotIndex: number) {
+    setCurrent(startIndex + dotIndex);
+  }
+
+  // Auto-slide — uses a ref for goNext to avoid stale closure issues
+  useEffect(() => {
+    if (isPaused || videos.length === 0 || cardWidth === 0) return;
+    intervalRef.current = setInterval(
+      () => goNextRef.current(),
+      SLIDE_INTERVAL,
+    );
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isPaused, videos.length, maxIndex]);
+  }, [isPaused, videos.length, cardWidth]);
 
-  function goTo(idx: number) {
-    setIsTransitioning(true);
-    setCurrent(Math.max(0, Math.min(idx, maxIndex)));
-    setTimeout(() => setIsTransitioning(false), 400);
+  // Touch swipe
+  const touchStartX = useRef(0);
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
   }
-
-  // Thumbnail fallback
-  function handleThumbError(
-    e: React.SyntheticEvent<HTMLImageElement>,
-    videoId: string,
-  ) {
-    const el = e.currentTarget;
-    const src = el.src;
-    if (src.includes("maxresdefault")) {
-      el.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-    } else if (src.includes("hqdefault")) {
-      el.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+  function onTouchEnd(e: React.TouchEvent) {
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) goNext();
+      else goPrev();
     }
   }
+
+  const translateX = current * (cardWidth + GAP);
+  const activeDot =
+    videos.length > 0
+      ? (((current - startIndex) % videos.length) + videos.length) %
+        videos.length
+      : 0;
 
   return (
     <section
       id="youtube-videos"
-      className="py-24 relative overflow-hidden"
+      className="py-16 md:py-24 relative overflow-hidden"
+      style={{ background: "#000" }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Background glow */}
+      {/* Subtle background glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -196,39 +277,34 @@ export function YouTubeSlider() {
         }}
       />
 
-      <div className="max-w-[1200px] mx-auto px-6 relative">
-        {/* Heading */}
-        <div className="flex flex-col items-center text-center mb-12">
-          <div className="flex items-center gap-3 mb-4">
-            <YouTubeLogo size={32} />
-            <p
-              className="text-xs font-bold uppercase tracking-widest"
-              style={{ color: GREEN }}
-            >
-              Our Channel
-            </p>
+      <div className="max-w-6xl mx-auto px-4 md:px-8 relative">
+        {/* Section heading */}
+        <div className="flex flex-col items-center text-center mb-10 md:mb-14">
+          <div className="flex items-center gap-3 mb-3">
+            <YouTubeLogo size={34} />
+            <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
+              Know more about TaskTurtle
+            </h2>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white">
-            Know more about TaskTurtle
-          </h2>
-          <p className="text-white/50 mt-3 max-w-md text-sm">
+          <p className="text-white/40 text-sm max-w-md">
             Watch our latest videos and learn how Task Turtle works for you.
           </p>
         </div>
 
-        {/* States */}
+        {/* Loading */}
         {loading && (
           <div className="flex justify-center items-center py-20">
             <div
               className="w-10 h-10 rounded-full border-2 animate-spin"
               style={{
                 borderColor: "rgba(0,230,118,0.2)",
-                borderTopColor: GREEN,
+                borderTopColor: "#00E676",
               }}
             />
           </div>
         )}
 
+        {/* Error */}
         {error && !loading && (
           <div
             className="text-center py-12 rounded-2xl border"
@@ -243,115 +319,211 @@ export function YouTubeSlider() {
           </div>
         )}
 
+        {/* Slider */}
         {!loading && !error && videos.length > 0 && (
           <>
-            {/* Slider track */}
-            <div className="relative overflow-hidden">
-              <div
-                className="flex gap-5"
+            <div className="relative">
+              {/* Prev button */}
+              <button
+                type="button"
+                aria-label="Previous video"
+                onClick={goPrev}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 w-10 h-10 rounded-full items-center justify-center transition-all duration-200 hover:scale-110"
                 style={{
-                  transform: `translateX(calc(-${current * (100 / visibleCount)}% - ${current * (20 / visibleCount)}px))`,
-                  transition: isTransitioning
-                    ? "transform 0.4s cubic-bezier(0.4,0,0.2,1)"
-                    : "transform 0.4s cubic-bezier(0.4,0,0.2,1)",
-                  width: `calc(${videos.length * (100 / visibleCount)}% + ${(videos.length - 1) * 20}px)`,
+                  background: "rgba(0,0,0,0.7)",
+                  border: "1.5px solid rgba(0,230,118,0.35)",
+                  boxShadow: "0 0 12px rgba(0,230,118,0.15)",
                 }}
               >
-                {videos.map((video) => (
-                  <a
-                    key={video.videoId}
-                    href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-shrink-0 group cursor-pointer block"
-                    style={{
-                      width: `calc(${100 / visibleCount}% - ${(20 * (visibleCount - 1)) / visibleCount}px)`,
-                    }}
-                  >
-                    <div
-                      className="rounded-2xl overflow-hidden border transition-all duration-300 group-hover:shadow-[0_0_32px_rgba(0,230,118,0.18)] group-hover:border-[rgba(0,230,118,0.35)]"
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  role="img"
+                  aria-label="Previous"
+                >
+                  <title>Previous</title>
+                  <path
+                    d="M10 3L5 8L10 13"
+                    stroke="#00E676"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {/* Next button */}
+              <button
+                type="button"
+                aria-label="Next video"
+                onClick={goNext}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 w-10 h-10 rounded-full items-center justify-center transition-all duration-200 hover:scale-110"
+                style={{
+                  background: "rgba(0,0,0,0.7)",
+                  border: "1.5px solid rgba(0,230,118,0.35)",
+                  boxShadow: "0 0 12px rgba(0,230,118,0.15)",
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  role="img"
+                  aria-label="Next"
+                >
+                  <title>Next</title>
+                  <path
+                    d="M6 3L11 8L6 13"
+                    stroke="#00E676"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {/* Overflow container (measured) */}
+              <div
+                ref={containerRef}
+                className="overflow-hidden"
+                onTouchStart={onTouchStart}
+                onTouchEnd={onTouchEnd}
+              >
+                {/* Track */}
+                <div
+                  className="flex"
+                  style={{
+                    gap: GAP,
+                    transform: `translateX(-${translateX}px)`,
+                    transition: noTransition
+                      ? "none"
+                      : "transform 0.5s cubic-bezier(0.4,0,0.2,1)",
+                    willChange: "transform",
+                  }}
+                  onTransitionEnd={handleTransitionEnd}
+                >
+                  {loopedVideos.map((video, idx) => (
+                    <a
+                      // biome-ignore lint/suspicious/noArrayIndexKey: looped array, index is stable
+                      key={idx}
+                      href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 group block"
                       style={{
-                        background: "rgba(255,255,255,0.03)",
-                        borderColor: "rgba(0,230,118,0.12)",
+                        width: cardWidth > 0 ? cardWidth : undefined,
+                        minWidth: cardWidth > 0 ? cardWidth : undefined,
                       }}
                     >
-                      {/* Thumbnail */}
-                      <div className="relative aspect-video overflow-hidden">
-                        <img
-                          src={video.thumbnail}
-                          alt={video.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          onError={(e) => handleThumbError(e, video.videoId)}
-                        />
-                        {/* Play overlay */}
+                      <div
+                        className="rounded-2xl overflow-hidden border h-full transition-all duration-300"
+                        style={{
+                          background: "rgba(255,255,255,0.03)",
+                          borderColor: "rgba(0,230,118,0.12)",
+                        }}
+                        onMouseEnter={(e) => {
+                          const el = e.currentTarget as HTMLDivElement;
+                          el.style.boxShadow = "0 0 32px rgba(0,230,118,0.2)";
+                          el.style.borderColor = "rgba(0,230,118,0.35)";
+                        }}
+                        onMouseLeave={(e) => {
+                          const el = e.currentTarget as HTMLDivElement;
+                          el.style.boxShadow = "none";
+                          el.style.borderColor = "rgba(0,230,118,0.12)";
+                        }}
+                      >
+                        {/* Thumbnail */}
                         <div
-                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                          style={{ background: "rgba(0,0,0,0.45)" }}
+                          className="relative overflow-hidden"
+                          style={{ aspectRatio: "16/9" }}
                         >
+                          <img
+                            src={video.thumbnail}
+                            alt={video.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            onError={(e) => handleThumbError(e, video.videoId)}
+                          />
+                          {/* Play overlay */}
                           <div
-                            className="w-14 h-14 rounded-full flex items-center justify-center"
-                            style={{
-                              background: "rgba(255,0,0,0.85)",
-                              boxShadow: "0 0 24px rgba(255,0,0,0.5)",
-                            }}
+                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                            style={{ background: "rgba(0,0,0,0.45)" }}
                           >
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 20 20"
-                              fill="white"
-                              role="img"
-                              aria-label="Play"
+                            <div
+                              className="w-12 h-12 rounded-full flex items-center justify-center"
+                              style={{
+                                background: "rgba(255,0,0,0.9)",
+                                boxShadow: "0 0 24px rgba(255,0,0,0.5)",
+                              }}
                             >
-                              <title>Play</title>
-                              <path d="M6 4l12 6-12 6V4z" />
-                            </svg>
+                              <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 18 18"
+                                fill="white"
+                                role="img"
+                                aria-label="Play"
+                              >
+                                <title>Play</title>
+                                <path d="M5 3.5L15 9L5 14.5V3.5Z" />
+                              </svg>
+                            </div>
+                          </div>
+                          {/* YT badge */}
+                          <div className="absolute top-2 right-2">
+                            <YouTubeLogo size={20} />
                           </div>
                         </div>
-                        {/* YT badge */}
-                        <div className="absolute top-2 right-2">
-                          <YouTubeLogo size={22} />
+
+                        {/* Title */}
+                        <div className="p-3">
+                          <p
+                            className="text-white text-sm font-semibold leading-snug group-hover:text-[#00E676] transition-colors duration-200"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              minHeight: "2.6em",
+                            }}
+                          >
+                            {video.title}
+                          </p>
                         </div>
                       </div>
-                      {/* Title */}
-                      <div className="p-4">
-                        <p className="text-white font-semibold text-sm leading-snug line-clamp-2 group-hover:text-[#00E676] transition-colors duration-200">
-                          {video.title}
-                        </p>
-                      </div>
-                    </div>
-                  </a>
-                ))}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Dot indicators */}
-            {maxIndex > 0 && (
-              <div className="flex justify-center gap-2 mt-8">
-                {Array.from({ length: maxIndex + 1 }).map((_, i) => (
-                  <button
-                    // biome-ignore lint/suspicious/noArrayIndexKey: index is stable here
-                    key={i}
-                    type="button"
-                    aria-label={`Go to slide ${i + 1}`}
-                    onClick={() => goTo(i)}
-                    className="rounded-full transition-all duration-300"
-                    style={{
-                      width: current === i ? 24 : 8,
-                      height: 8,
-                      background:
-                        current === i ? GREEN : "rgba(255,255,255,0.2)",
-                      boxShadow: current === i ? `0 0 10px ${GREEN}80` : "none",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Pause indicator */}
-            {isPaused && (
-              <p className="text-center text-white/20 text-xs mt-4">Paused</p>
-            )}
+            <div className="flex justify-center gap-2 mt-8">
+              {videos.map((_, i) => (
+                <button
+                  // biome-ignore lint/suspicious/noArrayIndexKey: index is stable dot position
+                  key={i}
+                  type="button"
+                  aria-label={`Go to video ${i + 1}`}
+                  onClick={() => goToDot(i)}
+                  className="rounded-full transition-all duration-300"
+                  style={{
+                    width: activeDot === i ? 24 : 8,
+                    height: 8,
+                    background:
+                      activeDot === i ? "#00E676" : "rgba(255,255,255,0.2)",
+                    boxShadow:
+                      activeDot === i ? "0 0 10px rgba(0,230,118,0.6)" : "none",
+                    cursor: "pointer",
+                    border: "none",
+                    padding: 0,
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+            </div>
           </>
         )}
       </div>

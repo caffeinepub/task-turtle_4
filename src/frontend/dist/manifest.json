@@ -1,0 +1,26 @@
+{
+  "name": "Task Turtle",
+  "short_name": "Task Turtle",
+  "description": "Hyper-local task marketplace — post tasks, earn money, get things done.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#00ff88",
+  "background_color": "#000000",
+  "scope": "/",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/assets/generated/task-turtle-icon.dim_192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/generated/task-turtle-icon.dim_512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

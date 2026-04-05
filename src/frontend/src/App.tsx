@@ -12,6 +12,7 @@ import { OTPVerification } from "./components/OTPVerification";
 import { PaymentDemo } from "./components/PaymentDemo";
 import { TaskTimeline } from "./components/TaskTimeline";
 import { TurtleChatbot } from "./components/TurtleChatbot";
+import { YouTubeSlider } from "./components/YouTubeSlider";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { AdminPage } from "./pages/AdminPage";
 import { BlogPage } from "./pages/BlogPage";
@@ -206,6 +207,7 @@ export default function App() {
         <main>
           <Hero />
           <HowItWorks />
+          <YouTubeSlider />
           <LiveMap />
           <FeaturedTasks />
 

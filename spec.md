@@ -1,47 +1,48 @@
-# Task Turtle — Pickup-Drop Task System
+# Task Turtle — YouTube Video Slider
 
 ## Current State
+The homepage (App.tsx) renders sections in this order:
+- Navbar
+- Hero
+- HowItWorks
+- LiveMap
+- FeaturedTasks
+- TaskTimeline demo
+- OTP demo
+- PaymentDemo
+- Footer
 
-Task Turtle has a functioning Daily Task system:
-- Backend: `main.mo` with Task, EscrowPayment, UserProfile data models and createTask/acceptTask/completeTask/getTasks functions
-- Frontend: Dashboard.tsx with 3 tabs (My Tasks, Post Task, Find Tasks), TaskerPage.tsx for tasker acceptance, AdminDashboard.tsx with 7 tabs (Overview, Tasks, Users, Taskers, Payments, Payouts, Profiles)
-- Payment: Razorpay integration via `/api/create-order` and `/api/verify-payment` Next.js API routes
-- Routing: Hash-based routing in App.tsx (#dashboard, #tasker, #admin, etc.)
+No YouTube section exists yet.
 
 ## Requested Changes (Diff)
 
 ### Add
-- **PickupDropTask data model** in main.mo: separate stable map `pickupDropTasks` with fields: id, pickupOwnerName, pickupContact, pickupLocation, dropOwnerName, dropContact, dropLocation, productWorth, taskerFee, boostFee, status, poster, acceptor, razorpayOrderId, razorpayPaymentId, paymentStatus, createdAt
-- **PickupDropActiveTask** model: taskId, taskerId, taskerPaymentDone, status, otpPickup, otpDelivery, taskerOrderId, taskerPaymentId
-- **Backend functions**: createPickupDropTask, getPickupDropTasks, acceptPickupDropTask (requires tasker payment), completePickupDropDelivery (OTP verify), getMyPickupDropPostedTasks, getMyPickupDropAcceptedTasks
-- **PostTaskCategorySelector component**: shown when user clicks "Post Task", offers 2 large cards (Daily Task vs Pickup-Drop Task)
-- **PickupDropPostForm component**: new form with Pickup Details (name, contact, location), Drop Details (name, contact, location), Task Details (product worth, tasker fee, boost fee). User pays taskerFee + boostFee via Razorpay.
-- **PickupDropFindTasks component**: shown under new "Pickup-Drop" tab in Find Tasks. Cards show: product worth (highlighted), net earning (after 15% cut, not breakdown), pickup location, drop location, Accept Task button.
-- **PickupDropAcceptModal component**: popup when tasker clicks Accept, shows product worth amount, triggers Razorpay payment for product worth.
-- **MyPickupDropTasks component**: new section in My Tasks tab with full pickup/drop details, product worth, earnings, status.
-- **Admin Dashboard "Pickup-Drop" tab**: shows all pickup-drop tasks with status, poster, tasker info, payment details.
-- **Razorpay integration for Pickup-Drop**: `/api/create-pd-order` for user task posting payment, `/api/verify-pd-payment` for user payment, `/api/create-tasker-order` for tasker deposit payment, `/api/verify-tasker-payment` for tasker deposit.
+- `YouTubeSlider` component (`src/frontend/src/components/YouTubeSlider.tsx`)
+  - Fetches latest 3-4 videos from YouTube channel @taskturtle via YouTube Data API v3
+  - Channel ID resolved from handle: @taskturtle
+  - Shows only videos (type=video), ordered by date descending
+  - High-quality thumbnails (maxresdefault → hqdefault fallback)
+  - Auto-slides every 3 seconds, infinite loop, pause on hover
+  - Shows 3 videos at a time on desktop, 1-2 on mobile
+  - Each card: thumbnail, title, click → opens YouTube in new tab
+  - Heading: "Know more about TaskTurtle" with YouTube logo
+  - Dark glassmorphic design matching app theme (#000 bg, #00E676 accents)
+  - Auto-refreshes data every 5 minutes
+- YouTubeSlider added to App.tsx homepage, placed directly after `<HowItWorks />`
 
 ### Modify
-- **Dashboard.tsx Post Task tab**: wrap existing PostTaskForm with the new category selector. When "Daily Task" is selected, show existing form. When "Pickup-Drop Task" is selected, show new PickupDropPostForm. Existing PostTaskForm code must NOT change.
-- **Dashboard.tsx Find Tasks tab**: add category tabs (Daily Tasks | Pickup-Drop Tasks). Daily Tasks tab shows existing find-tasks UI unchanged. Pickup-Drop tab shows new PickupDropFindTasks.
-- **Dashboard.tsx My Tasks tab**: add subsections — "My Daily Tasks" (existing unchanged) and "My Pickup-Drop Tasks" (new).
-- **AdminDashboard.tsx**: add "Pickup-Drop" tab to the existing 7 tabs.
-- **App.tsx**: no route changes needed; all changes are within Dashboard and Admin pages.
+- `App.tsx`: import and insert `<YouTubeSlider />` after `<HowItWorks />`
 
 ### Remove
-- Nothing from existing Daily Task system.
+- Nothing removed
 
 ## Implementation Plan
-
-1. Add PickupDrop types and functions to `main.mo` backend (separate stable maps, no touching existing ones)
-2. Update `backend.d.ts` and `backend.ts` to expose new backend functions
-3. Create `/api/create-pd-order/route.ts` and `/api/verify-pd-payment/route.ts` for user-side Razorpay
-4. Create `/api/create-tasker-order/route.ts` and `/api/verify-tasker-payment/route.ts` for tasker deposit Razorpay
-5. Create `PickupDropPostForm.tsx` component (standalone, full form)
-6. Create `PickupDropTaskCard.tsx` component (for Find Tasks view)
-7. Create `PickupDropAcceptModal.tsx` (deposit payment popup)
-8. Create `MyPickupDropTasks.tsx` (tasker's accepted PD tasks)
-9. Modify Dashboard.tsx: wrap Post Task, Find Tasks, My Tasks with category selector/tabs — additive only
-10. Modify AdminDashboard.tsx: add 8th tab for Pickup-Drop tasks
-11. Earning formula: net_earning = (tasker_fee + boost_fee) * 0.85 — shown in Find Tasks only
+1. Create `YouTubeSlider.tsx` with:
+   - `useEffect` to fetch from `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=UCxxxxxxxxx&maxResults=6&order=date&type=video&key=API_KEY`
+   - First resolve channel ID from handle using channels API
+   - Auto-slide interval (3s), pause-on-hover via mouseenter/mouseleave
+   - Infinite loop: duplicate video array for seamless wrap
+   - CSS transition for smooth slide
+   - YouTube logo SVG inline
+   - Responsive: 3 cards desktop, 2 tablet, 1 mobile
+2. Update `App.tsx` to import and use `<YouTubeSlider />`

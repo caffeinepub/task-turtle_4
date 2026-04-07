@@ -49,14 +49,24 @@ export function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
             style={{
               background: "rgba(0,230,118,0.1)",
               border: "1px solid rgba(0,230,118,0.25)",
               boxShadow: "0 0 32px rgba(0,230,118,0.2)",
             }}
           >
-            <span className="text-3xl">🐢</span>
+            <img
+              src="/icon-192x192.png"
+              alt="Task Turtle Logo"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              onError={(e) => {
+                // Fallback to emoji if icon fails to load
+                (e.target as HTMLImageElement).style.display = "none";
+                (e.target as HTMLImageElement).parentElement!.innerHTML =
+                  '<span style="font-size:28px">&#x1F422;</span>';
+              }}
+            />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             <span style={{ color: GREEN }}>Task</span> Turtle
@@ -186,20 +196,38 @@ export function LoginPage() {
           </p>
         </div>
 
-        <p
-          className="text-center text-xs mt-4"
-          style={{ color: "rgba(255,255,255,0.15)" }}
-        >
-          © {new Date().getFullYear()}. Built with ♥ using{" "}
-          <a
-            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "rgba(0,230,118,0.5)" }}
+        {/* Task Turtle branding — replaces caffeine.ai attribution */}
+        <div className="flex items-center justify-center gap-2.5 mt-5">
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 7,
+              overflow: "hidden",
+              border: "1px solid rgba(0,230,118,0.3)",
+              boxShadow: "0 0 10px rgba(0,230,118,0.25)",
+              flexShrink: 0,
+            }}
           >
-            caffeine.ai
-          </a>
-        </p>
+            <img
+              src="/icon-192x192.png"
+              alt="Task Turtle"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+          <span
+            className="text-sm font-bold tracking-tight"
+            style={{
+              color: "rgba(255,255,255,0.5)",
+              textShadow: "0 0 12px rgba(0,230,118,0.3)",
+            }}
+          >
+            <span style={{ color: GREEN }}>Task</span> Turtle
+          </span>
+        </div>
       </motion.div>
     </div>
   );

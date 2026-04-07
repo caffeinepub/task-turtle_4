@@ -716,22 +716,33 @@ export default function PostTaskForm() {
             </motion.button>
           </form>
         </div>
-
-        {/* Footer */}
-        <p
-          className="text-center text-xs mt-4"
-          style={{ color: "rgba(255,255,255,0.2)" }}
-        >
-          \u00a9 {new Date().getFullYear()}. Built with \u2665 using{" "}
-          <a
-            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "rgba(0,230,118,0.6)" }}
+        {/* Task Turtle branding */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <div
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 5,
+              overflow: "hidden",
+              border: "1px solid rgba(0,230,118,0.25)",
+            }}
           >
-            caffeine.ai
-          </a>
-        </p>
+            <img
+              src="/icon-192x192.png"
+              alt="Task Turtle"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+          <span
+            className="text-xs font-semibold"
+            style={{ color: "rgba(255,255,255,0.3)" }}
+          >
+            <span style={{ color: "rgba(0,230,118,0.7)" }}>Task</span> Turtle
+          </span>
+        </div>
       </motion.div>
     </div>
   );

@@ -6,14 +6,18 @@ import { FeaturedTasks } from "./components/FeaturedTasks";
 import { Footer } from "./components/Footer";
 import { Hero } from "./components/Hero";
 import { HowItWorks } from "./components/HowItWorks";
+import { InstallButton } from "./components/InstallButton";
 import { LiveMap } from "./components/LiveMap";
 import { Navbar } from "./components/Navbar";
 import { OTPVerification } from "./components/OTPVerification";
 import { PaymentDemo } from "./components/PaymentDemo";
+import { SplashScreen } from "./components/SplashScreen";
 import { TaskTimeline } from "./components/TaskTimeline";
 import { TurtleChatbot } from "./components/TurtleChatbot";
+import { UpdateBanner } from "./components/UpdateBanner";
 import { YouTubeSlider } from "./components/YouTubeSlider";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 import { AdminPage } from "./pages/AdminPage";
 import { BlogPage } from "./pages/BlogPage";
 import { Dashboard } from "./pages/Dashboard";
@@ -41,6 +45,9 @@ export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
   const hash = useHashRoute();
   const isAuthenticated = !!identity;
+
+  // Push notification base setup
+  usePushNotifications();
 
   // After login, redirect to admin if that was the intent
   useEffect(() => {
@@ -79,13 +86,20 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return (
+      <>
+        <SplashScreen />
+        <UpdateBanner />
+        <LoginPage />
+      </>
+    );
   }
 
   // Separate pages via hash routing
   if (hash === "#admin")
     return (
       <>
+        <UpdateBanner />
         <AdminPage />
         <TurtleChatbot />
       </>
@@ -93,6 +107,7 @@ export default function App() {
   if (hash === "#dashboard")
     return (
       <>
+        <UpdateBanner />
         <Dashboard />
         <TurtleChatbot />
       </>
@@ -100,6 +115,7 @@ export default function App() {
   if (hash === "#profile")
     return (
       <>
+        <UpdateBanner />
         <MyProfile />
         <TurtleChatbot />
       </>
@@ -107,6 +123,7 @@ export default function App() {
   if (hash === "#tasker")
     return (
       <>
+        <UpdateBanner />
         <TaskerPage />
         <TurtleChatbot />
       </>
@@ -114,6 +131,7 @@ export default function App() {
   if (hash === "#wallet")
     return (
       <>
+        <UpdateBanner />
         <WalletPage />
         <TurtleChatbot />
       </>
@@ -121,6 +139,7 @@ export default function App() {
   if (hash === "#features")
     return (
       <>
+        <UpdateBanner />
         <FeaturesPage />
         <TurtleChatbot />
       </>
@@ -128,6 +147,7 @@ export default function App() {
   if (hash === "#how-it-works")
     return (
       <>
+        <UpdateBanner />
         <HowItWorksPage />
         <TurtleChatbot />
       </>
@@ -135,6 +155,7 @@ export default function App() {
   if (hash === "#tasks")
     return (
       <>
+        <UpdateBanner />
         <TasksPage />
         <TurtleChatbot />
       </>
@@ -142,6 +163,7 @@ export default function App() {
   if (hash === "#blog")
     return (
       <>
+        <UpdateBanner />
         <BlogPage />
         <TurtleChatbot />
       </>
@@ -153,6 +175,15 @@ export default function App() {
       className="relative min-h-screen overflow-x-hidden"
       style={{ backgroundColor: "#000000" }}
     >
+      {/* Update banner — top of page */}
+      <UpdateBanner />
+
+      {/* Splash screen — session-once */}
+      <SplashScreen />
+
+      {/* Install banner — shows only when install is available */}
+      <InstallButton variant="banner" />
+
       <div
         className="fixed top-0 left-0 w-[600px] h-[600px] pointer-events-none"
         style={{

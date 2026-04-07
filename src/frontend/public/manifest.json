@@ -2,13 +2,15 @@
   "name": "Task Turtle",
   "short_name": "Task Turtle",
   "description": "Hyper-local task marketplace — post tasks, earn money, get things done.",
+  "lang": "en",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "theme_color": "#00ff88",
   "background_color": "#000000",
-  "scope": "/",
-  "lang": "en",
+  "categories": ["productivity", "business", "utilities"],
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -33,6 +35,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Go to your dashboard",
+      "url": "/#dashboard",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Find Tasks",
+      "short_name": "Tasks",
+      "description": "Browse available tasks",
+      "url": "/#tasks",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     }
   ]
 }

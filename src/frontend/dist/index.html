@@ -40,19 +40,52 @@
     <link rel="preload" as="image" href="/assets/generated/task-faucet.dim_400x240.jpg" />
     <link rel="preload" as="image" href="/assets/generated/task-furniture.dim_400x240.jpg" />
     <link rel="preload" as="image" href="/assets/generated/task-grocery.dim_400x240.jpg" />
-    <script type="module" crossorigin src="/assets/index-9BLbtJz5.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Bi5I_cY_.css">
+    <script type="module" crossorigin src="/assets/index-DrffSqPM.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-4f14fE8Y.css">
   </head>
   <body>
     <div id="root"></div>
     <script>
-      // Unregister any stale service workers to prevent caching issues
+      // Register advanced service worker
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (let registration of registrations) {
-            registration.unregister();
-            console.log('[PWA] Unregistered stale service worker');
-          }
+        window.addEventListener('load', function () {
+          navigator.serviceWorker
+            .register('/sw.js', { scope: '/' })
+            .then(function (registration) {
+              console.log('[PWA] Service Worker registered:', registration.scope);
+
+              // Listen for updates
+              registration.addEventListener('updatefound', function () {
+                const newWorker = registration.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener('statechange', function () {
+                  if (
+                    newWorker.state === 'installed' &&
+                    navigator.serviceWorker.controller
+                  ) {
+                    // New SW is waiting — dispatch event so React can show the update banner
+                    window.dispatchEvent(new CustomEvent('sw-update-available'));
+                    console.log('[PWA] New update available');
+                  }
+                });
+              });
+
+              // Check for updates every 60 seconds
+              setInterval(function () {
+                registration.update().catch(function () {});
+              }, 60000);
+            })
+            .catch(function (err) {
+              console.warn('[PWA] Service Worker registration failed:', err);
+            });
+
+          // Reload page when new SW takes control
+          var refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
         });
       }
     </script>

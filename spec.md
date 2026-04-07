@@ -1,48 +1,72 @@
-# Task Turtle — YouTube Video Slider
+# Task Turtle — PWA Upgrade
 
 ## Current State
-The homepage (App.tsx) renders sections in this order:
-- Navbar
-- Hero
-- HowItWorks
-- LiveMap
-- FeaturedTasks
-- TaskTimeline demo
-- OTP demo
-- PaymentDemo
-- Footer
-
-No YouTube section exists yet.
+- Base PWA working: manifest.json, icon-192x192.png, icon-512x512.png in /public, linked in index.html
+- index.html has basic meta tags (theme-color, apple-mobile-web-app-capable, apple-touch-icon)
+- Service worker is currently UNREGISTERED (stale SWs are unregistered on page load per current script)
+- No splash screen, no install button UI, no update banner
+- Footer has branding; LoginPage has a `caffeine.ai` attribution link at bottom
+- AdminPage has Task Turtle logo (emoji) in navbar — no Caffeine branding
+- All pages work fine; Daily + Pickup-Drop task systems intact
 
 ## Requested Changes (Diff)
 
 ### Add
-- `YouTubeSlider` component (`src/frontend/src/components/YouTubeSlider.tsx`)
-  - Fetches latest 3-4 videos from YouTube channel @taskturtle via YouTube Data API v3
-  - Channel ID resolved from handle: @taskturtle
-  - Shows only videos (type=video), ordered by date descending
-  - High-quality thumbnails (maxresdefault → hqdefault fallback)
-  - Auto-slides every 3 seconds, infinite loop, pause on hover
-  - Shows 3 videos at a time on desktop, 1-2 on mobile
-  - Each card: thumbnail, title, click → opens YouTube in new tab
-  - Heading: "Know more about TaskTurtle" with YouTube logo
-  - Dark glassmorphic design matching app theme (#000 bg, #00E676 accents)
-  - Auto-refreshes data every 5 minutes
-- YouTubeSlider added to App.tsx homepage, placed directly after `<HowItWorks />`
+- `public/sw.js` — advanced service worker:
+  - Cache-first strategy for CSS/JS/icons/fonts
+  - Network-first strategy for API calls and dynamic data
+  - Offline fallback to offline.html for navigation requests
+  - Cache versioning + auto-update on new deployment
+  - `skipWaiting` + `clients.claim` for instant activation
+- `public/offline.html` — standalone offline page (neon green + black, Task Turtle branded)
+- `src/components/SplashScreen.tsx` — full-screen splash:
+  - Uses existing turtle logo icon
+  - Fade-in + zoom + soft neon glow animation
+  - On first user interaction: startup chime plays + splash fades out + removed from DOM
+  - Sound plays only once per session
+- `src/components/InstallButton.tsx` — custom PWA install button:
+  - Intercepts `beforeinstallprompt`
+  - Shows only when install is available
+  - Hides after install
+- `src/components/UpdateBanner.tsx` — "New Update Available" toast/banner:
+  - Shows when SW detects a waiting update
+  - Has "Update Now" button that triggers `skipWaiting` and reloads
+- `src/hooks/usePushNotifications.ts` — push notification base:
+  - Requests notification permission
+  - Stores subscription structure for future push integration
+  - Does NOT connect to external services
 
 ### Modify
-- `App.tsx`: import and insert `<YouTubeSlider />` after `<HowItWorks />`
+- `index.html`:
+  - Replace SW unregistration script with proper SW registration + update detection
+  - Ensure all iOS meta tags are present
+  - Add `loading="lazy"` hints via meta
+- `public/manifest.json`:
+  - Add `display_override: ["window-controls-overlay", "standalone"]` for desktop
+  - Add `screenshots` field for richer install UI
+- `src/App.tsx`:
+  - Integrate SplashScreen (show on first load, dismiss on interaction)
+  - Integrate InstallButton (show in navbar area)
+  - Integrate UpdateBanner
+- `src/pages/LoginPage.tsx`:
+  - Remove `caffeine.ai` attribution link at bottom
+  - Replace bottom section with Task Turtle logo (img tag using /icon-192x192.png) + "Task Turtle" text with neon glow
+- `src/components/Navbar.tsx`:
+  - Add InstallButton in desktop nav actions area (shows only when available)
 
 ### Remove
-- Nothing removed
+- SW unregistration script from index.html (replaced with proper SW registration)
+- `caffeine.ai` attribution from LoginPage footer
 
 ## Implementation Plan
-1. Create `YouTubeSlider.tsx` with:
-   - `useEffect` to fetch from `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=UCxxxxxxxxx&maxResults=6&order=date&type=video&key=API_KEY`
-   - First resolve channel ID from handle using channels API
-   - Auto-slide interval (3s), pause-on-hover via mouseenter/mouseleave
-   - Infinite loop: duplicate video array for seamless wrap
-   - CSS transition for smooth slide
-   - YouTube logo SVG inline
-   - Responsive: 3 cards desktop, 2 tablet, 1 mobile
-2. Update `App.tsx` to import and use `<YouTubeSlider />`
+1. Write public/sw.js — versioned cache, cache-first for assets, network-first for API, offline fallback
+2. Write public/offline.html — standalone black+green offline page
+3. Update index.html — SW registration with update detection events, keep all iOS meta tags
+4. Update public/manifest.json — add display_override for desktop
+5. Write SplashScreen.tsx — uses /icon-192x192.png, Web Audio API chime, framer-motion animation
+6. Write InstallButton.tsx — beforeinstallprompt handler
+7. Write UpdateBanner.tsx — SW waiting state listener
+8. Write usePushNotifications.ts — notification permission hook
+9. Update App.tsx — wire SplashScreen + UpdateBanner
+10. Update Navbar.tsx — add InstallButton
+11. Update LoginPage.tsx — remove caffeine attribution, add branded footer

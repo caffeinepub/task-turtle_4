@@ -32,22 +32,35 @@ function YouTubeLogo({ size = 28 }: { size?: number }) {
 
 async function resolveChannelId(handle: string): Promise<string | null> {
   try {
+    console.log("[YouTubeSlider] Resolving channel ID for handle:", handle);
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${handle}&key=${YT_API_KEY}`,
+      { cache: "no-store" },
     );
     const data = await res.json();
-    return data?.items?.[0]?.id ?? null;
-  } catch {
+    console.log(
+      "[YouTubeSlider] Channel resolve response:",
+      JSON.stringify(data),
+    );
+    const id = data?.items?.[0]?.id ?? null;
+    console.log("[YouTubeSlider] Resolved channel ID:", id);
+    return id;
+  } catch (err) {
+    console.error("[YouTubeSlider] Channel resolve error:", err);
     return null;
   }
 }
 
 async function fetchLatestVideos(channelId: string): Promise<YTVideo[]> {
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=6&order=date&type=video&key=${YT_API_KEY}`,
-  );
+  console.log("[YouTubeSlider] Fetching videos for channelId:", channelId);
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=6&order=date&type=video&key=${YT_API_KEY}`;
+  const res = await fetch(url, { cache: "no-store" });
   const data = await res.json();
-  if (!data.items) return [];
+  console.log("[YouTubeSlider] Video fetch response:", JSON.stringify(data));
+  if (!data.items || data.items.length === 0) {
+    console.warn("[YouTubeSlider] No videos in response. Error:", data.error);
+    return [];
+  }
   return data.items.map(
     (item: {
       id: { videoId: string };
@@ -106,8 +119,14 @@ export function YouTubeSlider() {
   // Resolve channel ID
   useEffect(() => {
     resolveChannelId(CHANNEL_HANDLE).then((id) => {
-      if (id) setChannelId(id);
-      else setError("Could not find YouTube channel.");
+      if (id) {
+        setChannelId(id);
+      } else {
+        setLoading(false);
+        setError(
+          "Could not resolve YouTube channel. Check console for API response details.",
+        );
+      }
     });
   }, []);
 
@@ -117,11 +136,14 @@ export function YouTubeSlider() {
       setError(null);
       const vids = await fetchLatestVideos(chId);
       if (vids.length === 0) {
-        setError("No videos found on this channel yet.");
+        setError(
+          "No videos found on your YT channel yet. Check console for API response details.",
+        );
       } else {
         setVideos(vids);
       }
-    } catch {
+    } catch (err) {
+      console.error("[YouTubeSlider] fetchLatestVideos error:", err);
       setError("Failed to load videos. Please try again later.");
     } finally {
       setLoading(false);
@@ -316,6 +338,24 @@ export function YouTubeSlider() {
           >
             <YouTubeLogo size={40} />
             <p className="mt-4 text-sm">{error}</p>
+            {channelId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLoading(true);
+                  loadVideos(channelId);
+                }}
+                className="mt-4 px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 hover:opacity-80"
+                style={{
+                  background: "rgba(0,230,118,0.15)",
+                  border: "1px solid rgba(0,230,118,0.4)",
+                  color: "#00E676",
+                  cursor: "pointer",
+                }}
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
 

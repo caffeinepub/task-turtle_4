@@ -16,20 +16,20 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#00ff88" />
     <meta name="msapplication-TileColor" content="#000000" />
-    <meta name="msapplication-TileImage" content="/assets/generated/task-turtle-icon.dim_192x192.png" />
+    <meta name="msapplication-TileImage" content="/icon-192x192.png" />
 
     <!-- SEO / OG -->
     <meta name="description" content="Hyper-local task marketplace — post tasks, earn money, get things done." />
 
-    <!-- Favicon fallback -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/assets/generated/task-turtle-icon.dim_192x192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/assets/generated/task-turtle-icon.dim_512x512.png" />
-    <link rel="shortcut icon" href="/assets/generated/task-turtle-icon.dim_192x192.png" />
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
+    <link rel="shortcut icon" href="/icon-192x192.png" />
 
     <!-- Apple Touch Icon (iOS Add to Home Screen) -->
-    <link rel="apple-touch-icon" href="/assets/generated/task-turtle-icon.dim_192x192.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/assets/generated/task-turtle-icon.dim_192x192.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="/assets/generated/task-turtle-icon.dim_512x512.png" />
+    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512x512.png" />
 
     <!-- Image Preloads -->
     <link rel="preload" as="image" href="/assets/generated/carousel-banner.dim_800x500.jpg" />
@@ -40,10 +40,21 @@
     <link rel="preload" as="image" href="/assets/generated/task-faucet.dim_400x240.jpg" />
     <link rel="preload" as="image" href="/assets/generated/task-furniture.dim_400x240.jpg" />
     <link rel="preload" as="image" href="/assets/generated/task-grocery.dim_400x240.jpg" />
-    <script type="module" crossorigin src="/assets/index-DuuxMGeo.js"></script>
+    <script type="module" crossorigin src="/assets/index-08peW7aV.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Bi5I_cY_.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Unregister any stale service workers to prevent caching issues
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (let registration of registrations) {
+            registration.unregister();
+            console.log('[PWA] Unregistered stale service worker');
+          }
+        });
+      }
+    </script>
   </body>
 </html>

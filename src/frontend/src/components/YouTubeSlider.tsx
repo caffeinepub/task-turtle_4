@@ -30,58 +30,128 @@ function YouTubeLogo({ size = 28 }: { size?: number }) {
   );
 }
 
-async function resolveChannelId(handle: string): Promise<string | null> {
+/**
+ * Step 1: Resolve channel ID AND uploads playlist ID in a single API call.
+ * Uses the channels endpoint with forHandle (1 quota unit, no 403 issues).
+ */
+async function resolveChannelAndPlaylist(
+  handle: string,
+): Promise<{ channelId: string; uploadsPlaylistId: string } | null> {
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=id,contentDetails&forHandle=${handle}&key=${YT_API_KEY}`;
+  console.log("[YouTubeSlider] Step 1 — resolveChannelAndPlaylist URL:", url);
   try {
-    console.log("[YouTubeSlider] Resolving channel ID for handle:", handle);
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${handle}&key=${YT_API_KEY}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(url, { cache: "no-store" });
     const data = await res.json();
-    console.log(
-      "[YouTubeSlider] Channel resolve response:",
-      JSON.stringify(data),
-    );
-    const id = data?.items?.[0]?.id ?? null;
-    console.log("[YouTubeSlider] Resolved channel ID:", id);
-    return id;
+    console.log("[YouTubeSlider] Step 1 response:", JSON.stringify(data));
+    if (data.error) {
+      console.error(
+        `[YouTubeSlider] Step 1 API error ${data.error.code}: ${data.error.message}`,
+        data.error,
+      );
+      return null;
+    }
+    const item = data?.items?.[0];
+    if (!item) {
+      console.warn(
+        "[YouTubeSlider] Step 1: no channel found for handle:",
+        handle,
+      );
+      return null;
+    }
+    const channelId: string = item.id;
+    const uploadsPlaylistId: string =
+      item.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploadsPlaylistId) {
+      console.warn("[YouTubeSlider] Step 1: uploads playlist ID not found");
+      return null;
+    }
+    console.log("[YouTubeSlider] Step 1 resolved:", {
+      channelId,
+      uploadsPlaylistId,
+    });
+    return { channelId, uploadsPlaylistId };
   } catch (err) {
-    console.error("[YouTubeSlider] Channel resolve error:", err);
+    console.error("[YouTubeSlider] Step 1 fetch error:", err);
     return null;
   }
 }
 
-async function fetchLatestVideos(channelId: string): Promise<YTVideo[]> {
-  console.log("[YouTubeSlider] Fetching videos for channelId:", channelId);
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=6&order=date&type=video&key=${YT_API_KEY}`;
+/**
+ * Step 2: Fetch latest videos from the uploads playlist.
+ * Uses playlistItems endpoint (1 quota unit vs 100 for search — no 403 issues).
+ */
+async function fetchVideosFromPlaylist(
+  uploadsPlaylistId: string,
+): Promise<YTVideo[]> {
+  const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=9&key=${YT_API_KEY}`;
+  console.log("[YouTubeSlider] Step 2 — fetchVideosFromPlaylist URL:", url);
   const res = await fetch(url, { cache: "no-store" });
   const data = await res.json();
-  console.log("[YouTubeSlider] Video fetch response:", JSON.stringify(data));
+  console.log("[YouTubeSlider] Step 2 response:", JSON.stringify(data));
+  if (data.error) {
+    console.error(
+      `[YouTubeSlider] Step 2 API error ${data.error.code}: ${data.error.message}`,
+      data.error,
+    );
+    throw new Error(
+      `YouTube API error ${data.error.code}: ${data.error.message}`,
+    );
+  }
   if (!data.items || data.items.length === 0) {
-    console.warn("[YouTubeSlider] No videos in response. Error:", data.error);
+    console.warn("[YouTubeSlider] Step 2: no items in playlistItems response");
     return [];
   }
-  return data.items.map(
-    (item: {
-      id: { videoId: string };
-      snippet: {
-        title: string;
-        publishedAt: string;
-        thumbnails: {
-          maxres?: { url: string };
-          high?: { url: string };
-          default?: { url: string };
+
+  const videos: YTVideo[] = data.items
+    .filter(
+      (item: {
+        snippet: {
+          title: string;
+          publishedAt: string;
+          resourceId: { videoId: string };
+          thumbnails: Record<string, { url: string }>;
         };
-      };
-    }) => ({
-      videoId: item.id.videoId,
-      title: item.snippet.title,
-      thumbnail:
-        item.snippet.thumbnails?.maxres?.url ||
-        `https://i.ytimg.com/vi/${item.id.videoId}/maxresdefault.jpg`,
-      publishedAt: item.snippet.publishedAt,
-    }),
-  );
+      }) => {
+        // Skip deleted or private videos
+        const t = item.snippet?.title;
+        return t !== "Deleted video" && t !== "Private video";
+      },
+    )
+    .map(
+      (item: {
+        snippet: {
+          title: string;
+          publishedAt: string;
+          resourceId: { videoId: string };
+          thumbnails: {
+            maxres?: { url: string };
+            standard?: { url: string };
+            high?: { url: string };
+            medium?: { url: string };
+            default?: { url: string };
+          };
+        };
+      }) => {
+        const videoId = item.snippet.resourceId.videoId;
+        const thumbs = item.snippet.thumbnails;
+        const thumbnail =
+          thumbs?.maxres?.url ||
+          thumbs?.standard?.url ||
+          thumbs?.high?.url ||
+          thumbs?.medium?.url ||
+          thumbs?.default?.url ||
+          `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+        return {
+          videoId,
+          title: item.snippet.title,
+          thumbnail,
+          publishedAt: item.snippet.publishedAt,
+        };
+      },
+    );
+
+  console.log(`[YouTubeSlider] Step 2 loaded ${videos.length} videos`);
+  return videos;
 }
 
 function handleThumbError(
@@ -99,7 +169,9 @@ function handleThumbError(
 
 export function YouTubeSlider() {
   const [videos, setVideos] = useState<YTVideo[]>([]);
-  const [channelId, setChannelId] = useState<string | null>(null);
+  const [uploadsPlaylistId, setUploadsPlaylistId] = useState<string | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,11 +188,11 @@ export function YouTubeSlider() {
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resetPendingRef = useRef(false);
 
-  // Resolve channel ID
+  // Step 1: Resolve channel + uploads playlist ID
   useEffect(() => {
-    resolveChannelId(CHANNEL_HANDLE).then((id) => {
-      if (id) {
-        setChannelId(id);
+    resolveChannelAndPlaylist(CHANNEL_HANDLE).then((result) => {
+      if (result) {
+        setUploadsPlaylistId(result.uploadsPlaylistId);
       } else {
         setLoading(false);
         setError(
@@ -130,37 +202,41 @@ export function YouTubeSlider() {
     });
   }, []);
 
-  // Load videos
-  const loadVideos = useCallback(async (chId: string) => {
+  // Step 2: Load videos from playlist
+  const loadVideos = useCallback(async (playlistId: string) => {
     try {
       setError(null);
-      const vids = await fetchLatestVideos(chId);
+      const vids = await fetchVideosFromPlaylist(playlistId);
       if (vids.length === 0) {
         setError(
-          "No videos found on your YT channel yet. Check console for API response details.",
+          "No videos found on the TaskTurtle YouTube channel yet. Check console for API response details.",
         );
       } else {
         setVideos(vids);
       }
     } catch (err) {
-      console.error("[YouTubeSlider] fetchLatestVideos error:", err);
-      setError("Failed to load videos. Please try again later.");
+      console.error("[YouTubeSlider] fetchVideosFromPlaylist error:", err);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to load videos. Please try again later.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!channelId) return;
-    loadVideos(channelId);
+    if (!uploadsPlaylistId) return;
+    loadVideos(uploadsPlaylistId);
     refreshRef.current = setInterval(
-      () => loadVideos(channelId),
+      () => loadVideos(uploadsPlaylistId),
       5 * 60 * 1000,
     );
     return () => {
       if (refreshRef.current) clearInterval(refreshRef.current);
     };
-  }, [channelId, loadVideos]);
+  }, [uploadsPlaylistId, loadVideos]);
 
   // Measure container and compute card width
   useEffect(() => {
@@ -305,7 +381,7 @@ export function YouTubeSlider() {
           <div className="flex items-center gap-3 mb-3">
             <YouTubeLogo size={34} />
             <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
-              Know more about TaskTurtle
+              Know More About Task Turtle
             </h2>
           </div>
           <p className="text-white/40 text-sm max-w-md">
@@ -338,12 +414,12 @@ export function YouTubeSlider() {
           >
             <YouTubeLogo size={40} />
             <p className="mt-4 text-sm">{error}</p>
-            {channelId && (
+            {uploadsPlaylistId && (
               <button
                 type="button"
                 onClick={() => {
                   setLoading(true);
-                  loadVideos(channelId);
+                  loadVideos(uploadsPlaylistId);
                 }}
                 className="mt-4 px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 hover:opacity-80"
                 style={{
